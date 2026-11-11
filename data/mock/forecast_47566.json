@@ -1,0 +1,132 @@
+{
+  "product_id": "47566",
+  "description": "PARTY BUNTING",
+  "history": [
+    {
+      "week_start": "2011-07-18",
+      "units": 129
+    },
+    {
+      "week_start": "2011-07-25",
+      "units": 131
+    },
+    {
+      "week_start": "2011-08-01",
+      "units": 138
+    },
+    {
+      "week_start": "2011-08-08",
+      "units": 131
+    },
+    {
+      "week_start": "2011-08-15",
+      "units": 108
+    },
+    {
+      "week_start": "2011-08-22",
+      "units": 137
+    },
+    {
+      "week_start": "2011-08-29",
+      "units": 161
+    },
+    {
+      "week_start": "2011-09-05",
+      "units": 157
+    },
+    {
+      "week_start": "2011-09-12",
+      "units": 153
+    },
+    {
+      "week_start": "2011-09-19",
+      "units": 180
+    },
+    {
+      "week_start": "2011-09-26",
+      "units": 101
+    },
+    {
+      "week_start": "2011-10-03",
+      "units": 172
+    },
+    {
+      "week_start": "2011-10-10",
+      "units": 165
+    },
+    {
+      "week_start": "2011-10-17",
+      "units": 203
+    },
+    {
+      "week_start": "2011-10-24",
+      "units": 138
+    },
+    {
+      "week_start": "2011-10-31",
+      "units": 174
+    },
+    {
+      "week_start": "2011-11-07",
+      "units": 200
+    },
+    {
+      "week_start": "2011-11-14",
+      "units": 192
+    },
+    {
+      "week_start": "2011-11-21",
+      "units": 156
+    },
+    {
+      "week_start": "2011-11-28",
+      "units": 164
+    }
+  ],
+  "test_predictions": [
+    {
+      "week_start": "2011-10-10",
+      "actual": 165.0,
+      "predicted": 152.06
+    },
+    {
+      "week_start": "2011-10-17",
+      "actual": 203.0,
+      "predicted": 190.73
+    },
+    {
+      "week_start": "2011-10-24",
+      "actual": 138.0,
+      "predicted": 136.34
+    },
+    {
+      "week_start": "2011-10-31",
+      "actual": 174.0,
+      "predicted": 147.79
+    },
+    {
+      "week_start": "2011-11-07",
+      "actual": 200.0,
+      "predicted": 202.12
+    },
+    {
+      "week_start": "2011-11-14",
+      "actual": 192.0,
+      "predicted": 206.8
+    },
+    {
+      "week_start": "2011-11-21",
+      "actual": 156.0,
+      "predicted": 158.55
+    },
+    {
+      "week_start": "2011-11-28",
+      "actual": 164.0,
+      "predicted": 138.91
+    }
+  ],
+  "next_week_forecast": {
+    "week_start": "2011-12-05",
+    "forecast_weekly": 183.71
+  }
+}

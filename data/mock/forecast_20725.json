@@ -1,0 +1,132 @@
+{
+  "product_id": "20725",
+  "description": "LUNCH BAG RED RETROSPOT",
+  "history": [
+    {
+      "week_start": "2011-07-18",
+      "units": 83
+    },
+    {
+      "week_start": "2011-07-25",
+      "units": 100
+    },
+    {
+      "week_start": "2011-08-01",
+      "units": 91
+    },
+    {
+      "week_start": "2011-08-08",
+      "units": 127
+    },
+    {
+      "week_start": "2011-08-15",
+      "units": 98
+    },
+    {
+      "week_start": "2011-08-22",
+      "units": 115
+    },
+    {
+      "week_start": "2011-08-29",
+      "units": 141
+    },
+    {
+      "week_start": "2011-09-05",
+      "units": 120
+    },
+    {
+      "week_start": "2011-09-12",
+      "units": 115
+    },
+    {
+      "week_start": "2011-09-19",
+      "units": 142
+    },
+    {
+      "week_start": "2011-09-26",
+      "units": 102
+    },
+    {
+      "week_start": "2011-10-03",
+      "units": 91
+    },
+    {
+      "week_start": "2011-10-10",
+      "units": 120
+    },
+    {
+      "week_start": "2011-10-17",
+      "units": 115
+    },
+    {
+      "week_start": "2011-10-24",
+      "units": 114
+    },
+    {
+      "week_start": "2011-10-31",
+      "units": 168
+    },
+    {
+      "week_start": "2011-11-07",
+      "units": 144
+    },
+    {
+      "week_start": "2011-11-14",
+      "units": 126
+    },
+    {
+      "week_start": "2011-11-21",
+      "units": 128
+    },
+    {
+      "week_start": "2011-11-28",
+      "units": 153
+    }
+  ],
+  "test_predictions": [
+    {
+      "week_start": "2011-10-10",
+      "actual": 120.0,
+      "predicted": 129.59
+    },
+    {
+      "week_start": "2011-10-17",
+      "actual": 115.0,
+      "predicted": 114.86
+    },
+    {
+      "week_start": "2011-10-24",
+      "actual": 114.0,
+      "predicted": 121.02
+    },
+    {
+      "week_start": "2011-10-31",
+      "actual": 168.0,
+      "predicted": 159.56
+    },
+    {
+      "week_start": "2011-11-07",
+      "actual": 144.0,
+      "predicted": 141.92
+    },
+    {
+      "week_start": "2011-11-14",
+      "actual": 126.0,
+      "predicted": 123.43
+    },
+    {
+      "week_start": "2011-11-21",
+      "actual": 128.0,
+      "predicted": 117.09
+    },
+    {
+      "week_start": "2011-11-28",
+      "actual": 153.0,
+      "predicted": 160.59
+    }
+  ],
+  "next_week_forecast": {
+    "week_start": "2011-12-05",
+    "forecast_weekly": 143.64
+  }
+}

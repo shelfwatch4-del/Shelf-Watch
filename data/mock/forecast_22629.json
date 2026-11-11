@@ -1,0 +1,132 @@
+{
+  "product_id": "22629",
+  "description": "SPACEBOY LUNCH BOX",
+  "history": [
+    {
+      "week_start": "2011-07-18",
+      "units": 23
+    },
+    {
+      "week_start": "2011-07-25",
+      "units": 66
+    },
+    {
+      "week_start": "2011-08-01",
+      "units": 70
+    },
+    {
+      "week_start": "2011-08-08",
+      "units": 60
+    },
+    {
+      "week_start": "2011-08-15",
+      "units": 56
+    },
+    {
+      "week_start": "2011-08-22",
+      "units": 55
+    },
+    {
+      "week_start": "2011-08-29",
+      "units": 76
+    },
+    {
+      "week_start": "2011-09-05",
+      "units": 72
+    },
+    {
+      "week_start": "2011-09-12",
+      "units": 74
+    },
+    {
+      "week_start": "2011-09-19",
+      "units": 98
+    },
+    {
+      "week_start": "2011-09-26",
+      "units": 105
+    },
+    {
+      "week_start": "2011-10-03",
+      "units": 112
+    },
+    {
+      "week_start": "2011-10-10",
+      "units": 107
+    },
+    {
+      "week_start": "2011-10-17",
+      "units": 106
+    },
+    {
+      "week_start": "2011-10-24",
+      "units": 104
+    },
+    {
+      "week_start": "2011-10-31",
+      "units": 109
+    },
+    {
+      "week_start": "2011-11-07",
+      "units": 139
+    },
+    {
+      "week_start": "2011-11-14",
+      "units": 133
+    },
+    {
+      "week_start": "2011-11-21",
+      "units": 120
+    },
+    {
+      "week_start": "2011-11-28",
+      "units": 142
+    }
+  ],
+  "test_predictions": [
+    {
+      "week_start": "2011-10-10",
+      "actual": 107.0,
+      "predicted": 79.18
+    },
+    {
+      "week_start": "2011-10-17",
+      "actual": 106.0,
+      "predicted": 101.62
+    },
+    {
+      "week_start": "2011-10-24",
+      "actual": 104.0,
+      "predicted": 91.92
+    },
+    {
+      "week_start": "2011-10-31",
+      "actual": 109.0,
+      "predicted": 115.8
+    },
+    {
+      "week_start": "2011-11-07",
+      "actual": 139.0,
+      "predicted": 129.16
+    },
+    {
+      "week_start": "2011-11-14",
+      "actual": 133.0,
+      "predicted": 136.51
+    },
+    {
+      "week_start": "2011-11-21",
+      "actual": 120.0,
+      "predicted": 124.91
+    },
+    {
+      "week_start": "2011-11-28",
+      "actual": 142.0,
+      "predicted": 164.05
+    }
+  ],
+  "next_week_forecast": {
+    "week_start": "2011-12-05",
+    "forecast_weekly": 142.82
+  }
+}

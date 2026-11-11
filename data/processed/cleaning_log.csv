@@ -1,0 +1,9 @@
+step,rows_remaining
+raw rows,541909
+drop cancellations,532621
+drop Quantity <= 0,531285
+drop UnitPrice <= 0,530104
+drop non-product StockCodes,527734
+drop partial weeks,500386
+cap Quantity (train),500386
+keep top-100 products,76648

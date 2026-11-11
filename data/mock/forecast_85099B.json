@@ -1,0 +1,132 @@
+{
+  "product_id": "85099B",
+  "description": "JUMBO BAG RED RETROSPOT",
+  "history": [
+    {
+      "week_start": "2011-07-18",
+      "units": 387
+    },
+    {
+      "week_start": "2011-07-25",
+      "units": 343
+    },
+    {
+      "week_start": "2011-08-01",
+      "units": 367
+    },
+    {
+      "week_start": "2011-08-08",
+      "units": 488
+    },
+    {
+      "week_start": "2011-08-15",
+      "units": 338
+    },
+    {
+      "week_start": "2011-08-22",
+      "units": 533
+    },
+    {
+      "week_start": "2011-08-29",
+      "units": 507
+    },
+    {
+      "week_start": "2011-09-05",
+      "units": 494
+    },
+    {
+      "week_start": "2011-09-12",
+      "units": 635
+    },
+    {
+      "week_start": "2011-09-19",
+      "units": 639
+    },
+    {
+      "week_start": "2011-09-26",
+      "units": 791
+    },
+    {
+      "week_start": "2011-10-03",
+      "units": 716
+    },
+    {
+      "week_start": "2011-10-10",
+      "units": 846
+    },
+    {
+      "week_start": "2011-10-17",
+      "units": 735
+    },
+    {
+      "week_start": "2011-10-24",
+      "units": 683
+    },
+    {
+      "week_start": "2011-10-31",
+      "units": 986
+    },
+    {
+      "week_start": "2011-11-07",
+      "units": 697
+    },
+    {
+      "week_start": "2011-11-14",
+      "units": 849
+    },
+    {
+      "week_start": "2011-11-21",
+      "units": 917
+    },
+    {
+      "week_start": "2011-11-28",
+      "units": 958
+    }
+  ],
+  "test_predictions": [
+    {
+      "week_start": "2011-10-10",
+      "actual": 846.0,
+      "predicted": 808.9
+    },
+    {
+      "week_start": "2011-10-17",
+      "actual": 735.0,
+      "predicted": 694.1
+    },
+    {
+      "week_start": "2011-10-24",
+      "actual": 683.0,
+      "predicted": 650.95
+    },
+    {
+      "week_start": "2011-10-31",
+      "actual": 986.0,
+      "predicted": 953.6
+    },
+    {
+      "week_start": "2011-11-07",
+      "actual": 697.0,
+      "predicted": 666.33
+    },
+    {
+      "week_start": "2011-11-14",
+      "actual": 849.0,
+      "predicted": 910.53
+    },
+    {
+      "week_start": "2011-11-21",
+      "actual": 917.0,
+      "predicted": 764.79
+    },
+    {
+      "week_start": "2011-11-28",
+      "actual": 958.0,
+      "predicted": 1022.74
+    }
+  ],
+  "next_week_forecast": {
+    "week_start": "2011-12-05",
+    "forecast_weekly": 865.06
+  }
+}

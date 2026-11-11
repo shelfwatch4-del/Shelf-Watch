@@ -1,0 +1,132 @@
+{
+  "product_id": "85123A",
+  "description": "WHITE HANGING HEART T-LIGHT HOLDER",
+  "history": [
+    {
+      "week_start": "2011-07-18",
+      "units": 376
+    },
+    {
+      "week_start": "2011-07-25",
+      "units": 243
+    },
+    {
+      "week_start": "2011-08-01",
+      "units": 374
+    },
+    {
+      "week_start": "2011-08-08",
+      "units": 388
+    },
+    {
+      "week_start": "2011-08-15",
+      "units": 416
+    },
+    {
+      "week_start": "2011-08-22",
+      "units": 390
+    },
+    {
+      "week_start": "2011-08-29",
+      "units": 383
+    },
+    {
+      "week_start": "2011-09-05",
+      "units": 445
+    },
+    {
+      "week_start": "2011-09-12",
+      "units": 395
+    },
+    {
+      "week_start": "2011-09-19",
+      "units": 429
+    },
+    {
+      "week_start": "2011-09-26",
+      "units": 492
+    },
+    {
+      "week_start": "2011-10-03",
+      "units": 412
+    },
+    {
+      "week_start": "2011-10-10",
+      "units": 518
+    },
+    {
+      "week_start": "2011-10-17",
+      "units": 490
+    },
+    {
+      "week_start": "2011-10-24",
+      "units": 451
+    },
+    {
+      "week_start": "2011-10-31",
+      "units": 435
+    },
+    {
+      "week_start": "2011-11-07",
+      "units": 509
+    },
+    {
+      "week_start": "2011-11-14",
+      "units": 485
+    },
+    {
+      "week_start": "2011-11-21",
+      "units": 436
+    },
+    {
+      "week_start": "2011-11-28",
+      "units": 534
+    }
+  ],
+  "test_predictions": [
+    {
+      "week_start": "2011-10-10",
+      "actual": 518.0,
+      "predicted": 570.89
+    },
+    {
+      "week_start": "2011-10-17",
+      "actual": 490.0,
+      "predicted": 527.42
+    },
+    {
+      "week_start": "2011-10-24",
+      "actual": 451.0,
+      "predicted": 385.01
+    },
+    {
+      "week_start": "2011-10-31",
+      "actual": 435.0,
+      "predicted": 463.11
+    },
+    {
+      "week_start": "2011-11-07",
+      "actual": 509.0,
+      "predicted": 522.46
+    },
+    {
+      "week_start": "2011-11-14",
+      "actual": 485.0,
+      "predicted": 410.08
+    },
+    {
+      "week_start": "2011-11-21",
+      "actual": 436.0,
+      "predicted": 430.69
+    },
+    {
+      "week_start": "2011-11-28",
+      "actual": 534.0,
+      "predicted": 546.18
+    }
+  ],
+  "next_week_forecast": {
+    "week_start": "2011-12-05",
+    "forecast_weekly": 499.13
+  }
+}

@@ -1,0 +1,208 @@
+{
+  "model_name": "lightgbm",
+  "by_segment": [
+    {
+      "segment": "low",
+      "n_products": 4,
+      "MAE": 12.0778,
+      "RMSE": 15.5876,
+      "WAPE": 0.0761,
+      "bias": -5.9334
+    },
+    {
+      "segment": "medium",
+      "n_products": 3,
+      "MAE": 20.0354,
+      "RMSE": 26.3544,
+      "WAPE": 0.0557,
+      "bias": 0.8721
+    },
+    {
+      "segment": "high",
+      "n_products": 3,
+      "MAE": 42.1067,
+      "RMSE": 53.7892,
+      "WAPE": 0.0715,
+      "bias": 1.6092
+    }
+  ],
+  "by_week": [
+    {
+      "week_start": "2011-10-10",
+      "MAE": 23.918,
+      "RMSE": 27.6212,
+      "WAPE": 0.0718,
+      "bias": -6.31
+    },
+    {
+      "week_start": "2011-10-17",
+      "MAE": 18.557,
+      "RMSE": 25.552,
+      "WAPE": 0.0547,
+      "bias": 3.905
+    },
+    {
+      "week_start": "2011-10-24",
+      "MAE": 24.111,
+      "RMSE": 31.294,
+      "WAPE": 0.0737,
+      "bias": -19.073
+    },
+    {
+      "week_start": "2011-10-31",
+      "MAE": 22.995,
+      "RMSE": 30.4796,
+      "WAPE": 0.0632,
+      "bias": -1.095
+    },
+    {
+      "week_start": "2011-11-07",
+      "MAE": 18.898,
+      "RMSE": 26.2958,
+      "WAPE": 0.0539,
+      "bias": 5.114
+    },
+    {
+      "week_start": "2011-11-14",
+      "MAE": 28.946,
+      "RMSE": 37.5395,
+      "WAPE": 0.0844,
+      "bias": 3.682
+    },
+    {
+      "week_start": "2011-11-21",
+      "MAE": 30.631,
+      "RMSE": 57.6466,
+      "WAPE": 0.0853,
+      "bias": -5.421
+    },
+    {
+      "week_start": "2011-11-28",
+      "MAE": 19.734,
+      "RMSE": 25.3055,
+      "WAPE": 0.0537,
+      "bias": 6.166
+    }
+  ],
+  "by_product": [
+    {
+      "product_id": "20725",
+      "description": "LUNCH BAG RED RETROSPOT",
+      "segment": "low",
+      "mean_actual": 133.5,
+      "mean_predicted": 133.51,
+      "MAE": 6.0425,
+      "RMSE": 7.0717,
+      "WAPE": 0.0453,
+      "bias": 0.0075
+    },
+    {
+      "product_id": "21212",
+      "description": "PACK OF 72 RETROSPOT CAKE CASES",
+      "segment": "medium",
+      "mean_actual": 404.25,
+      "mean_predicted": 401.54,
+      "MAE": 18.7575,
+      "RMSE": 22.2705,
+      "WAPE": 0.0464,
+      "bias": -2.7075
+    },
+    {
+      "product_id": "22197",
+      "description": "POPCORN HOLDER",
+      "segment": "medium",
+      "mean_actual": 353.88,
+      "mean_predicted": 355.72,
+      "MAE": 20.22,
+      "RMSE": 30.4753,
+      "WAPE": 0.0571,
+      "bias": 1.8425
+    },
+    {
+      "product_id": "84879",
+      "description": "ASSORTED COLOUR BIRD ORNAMENT",
+      "segment": "medium",
+      "mean_actual": 321.62,
+      "mean_predicted": 325.11,
+      "MAE": 21.1288,
+      "RMSE": 25.6699,
+      "WAPE": 0.0657,
+      "bias": 3.4812
+    },
+    {
+      "product_id": "85099B",
+      "description": "JUMBO BAG RED RETROSPOT",
+      "segment": "high",
+      "mean_actual": 833.88,
+      "mean_predicted": 808.99,
+      "MAE": 56.45,
+      "RMSE": 68.2018,
+      "WAPE": 0.0677,
+      "bias": -24.8825
+    },
+    {
+      "product_id": "47566",
+      "description": "PARTY BUNTING",
+      "segment": "low",
+      "mean_actual": 174.0,
+      "mean_predicted": 166.66,
+      "MAE": 12.205,
+      "RMSE": 15.2777,
+      "WAPE": 0.0701,
+      "bias": -7.3375
+    },
+    {
+      "product_id": "84077",
+      "description": "WORLD WAR 2 GLIDERS ASSTD DESIGNS",
+      "segment": "high",
+      "mean_actual": 450.0,
+      "mean_predicted": 479.98,
+      "MAE": 33.585,
+      "RMSE": 45.9805,
+      "WAPE": 0.0746,
+      "bias": 29.98
+    },
+    {
+      "product_id": "85123A",
+      "description": "WHITE HANGING HEART T-LIGHT HOLDER",
+      "segment": "high",
+      "mean_actual": 482.25,
+      "mean_predicted": 481.98,
+      "MAE": 36.285,
+      "RMSE": 43.751,
+      "WAPE": 0.0752,
+      "bias": -0.27
+    },
+    {
+      "product_id": "22423",
+      "description": "REGENCY CAKESTAND 3 TIER",
+      "segment": "low",
+      "mean_actual": 207.0,
+      "mean_predicted": 192.7,
+      "MAE": 18.64,
+      "RMSE": 22.0881,
+      "WAPE": 0.09,
+      "bias": -14.2975
+    },
+    {
+      "product_id": "22629",
+      "description": "SPACEBOY LUNCH BOX",
+      "segment": "low",
+      "mean_actual": 120.0,
+      "mean_predicted": 117.89,
+      "MAE": 11.4237,
+      "RMSE": 14.1632,
+      "WAPE": 0.0952,
+      "bias": -2.1062
+    }
+  ],
+  "over_under": {
+    "n_over": 37,
+    "n_under": 43,
+    "n_exact": 0,
+    "over_pct": 46.2,
+    "under_pct": 53.8,
+    "mean_over_error": 23.62,
+    "mean_under_error": -23.35
+  }
+}

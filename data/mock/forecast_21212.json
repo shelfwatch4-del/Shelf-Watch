@@ -1,0 +1,132 @@
+{
+  "product_id": "21212",
+  "description": "PACK OF 72 RETROSPOT CAKE CASES",
+  "history": [
+    {
+      "week_start": "2011-07-18",
+      "units": 179
+    },
+    {
+      "week_start": "2011-07-25",
+      "units": 409
+    },
+    {
+      "week_start": "2011-08-01",
+      "units": 299
+    },
+    {
+      "week_start": "2011-08-08",
+      "units": 245
+    },
+    {
+      "week_start": "2011-08-15",
+      "units": 258
+    },
+    {
+      "week_start": "2011-08-22",
+      "units": 274
+    },
+    {
+      "week_start": "2011-08-29",
+      "units": 313
+    },
+    {
+      "week_start": "2011-09-05",
+      "units": 326
+    },
+    {
+      "week_start": "2011-09-12",
+      "units": 398
+    },
+    {
+      "week_start": "2011-09-19",
+      "units": 353
+    },
+    {
+      "week_start": "2011-09-26",
+      "units": 504
+    },
+    {
+      "week_start": "2011-10-03",
+      "units": 329
+    },
+    {
+      "week_start": "2011-10-10",
+      "units": 436
+    },
+    {
+      "week_start": "2011-10-17",
+      "units": 429
+    },
+    {
+      "week_start": "2011-10-24",
+      "units": 403
+    },
+    {
+      "week_start": "2011-10-31",
+      "units": 384
+    },
+    {
+      "week_start": "2011-11-07",
+      "units": 391
+    },
+    {
+      "week_start": "2011-11-14",
+      "units": 321
+    },
+    {
+      "week_start": "2011-11-21",
+      "units": 462
+    },
+    {
+      "week_start": "2011-11-28",
+      "units": 408
+    }
+  ],
+  "test_predictions": [
+    {
+      "week_start": "2011-10-10",
+      "actual": 436.0,
+      "predicted": 416.93
+    },
+    {
+      "week_start": "2011-10-17",
+      "actual": 429.0,
+      "predicted": 439.11
+    },
+    {
+      "week_start": "2011-10-24",
+      "actual": 403.0,
+      "predicted": 376.35
+    },
+    {
+      "week_start": "2011-10-31",
+      "actual": 384.0,
+      "predicted": 380.97
+    },
+    {
+      "week_start": "2011-11-07",
+      "actual": 391.0,
+      "predicted": 365.98
+    },
+    {
+      "week_start": "2011-11-14",
+      "actual": 321.0,
+      "predicted": 364.59
+    },
+    {
+      "week_start": "2011-11-21",
+      "actual": 462.0,
+      "predicted": 472.5
+    },
+    {
+      "week_start": "2011-11-28",
+      "actual": 408.0,
+      "predicted": 395.91
+    }
+  ],
+  "next_week_forecast": {
+    "week_start": "2011-12-05",
+    "forecast_weekly": 412.27
+  }
+}

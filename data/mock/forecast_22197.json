@@ -1,0 +1,132 @@
+{
+  "product_id": "22197",
+  "description": "POPCORN HOLDER",
+  "history": [
+    {
+      "week_start": "2011-07-18",
+      "units": 298
+    },
+    {
+      "week_start": "2011-07-25",
+      "units": 289
+    },
+    {
+      "week_start": "2011-08-01",
+      "units": 302
+    },
+    {
+      "week_start": "2011-08-08",
+      "units": 268
+    },
+    {
+      "week_start": "2011-08-15",
+      "units": 303
+    },
+    {
+      "week_start": "2011-08-22",
+      "units": 254
+    },
+    {
+      "week_start": "2011-08-29",
+      "units": 239
+    },
+    {
+      "week_start": "2011-09-05",
+      "units": 303
+    },
+    {
+      "week_start": "2011-09-12",
+      "units": 309
+    },
+    {
+      "week_start": "2011-09-19",
+      "units": 212
+    },
+    {
+      "week_start": "2011-09-26",
+      "units": 372
+    },
+    {
+      "week_start": "2011-10-03",
+      "units": 349
+    },
+    {
+      "week_start": "2011-10-10",
+      "units": 332
+    },
+    {
+      "week_start": "2011-10-17",
+      "units": 343
+    },
+    {
+      "week_start": "2011-10-24",
+      "units": 396
+    },
+    {
+      "week_start": "2011-10-31",
+      "units": 375
+    },
+    {
+      "week_start": "2011-11-07",
+      "units": 381
+    },
+    {
+      "week_start": "2011-11-14",
+      "units": 263
+    },
+    {
+      "week_start": "2011-11-21",
+      "units": 413
+    },
+    {
+      "week_start": "2011-11-28",
+      "units": 328
+    }
+  ],
+  "test_predictions": [
+    {
+      "week_start": "2011-10-10",
+      "actual": 332.0,
+      "predicted": 330.49
+    },
+    {
+      "week_start": "2011-10-17",
+      "actual": 343.0,
+      "predicted": 347.3
+    },
+    {
+      "week_start": "2011-10-24",
+      "actual": 396.0,
+      "predicted": 344.77
+    },
+    {
+      "week_start": "2011-10-31",
+      "actual": 375.0,
+      "predicted": 370.47
+    },
+    {
+      "week_start": "2011-11-07",
+      "actual": 381.0,
+      "predicted": 445.89
+    },
+    {
+      "week_start": "2011-11-14",
+      "actual": 263.0,
+      "predicted": 279.88
+    },
+    {
+      "week_start": "2011-11-21",
+      "actual": 413.0,
+      "predicted": 415.18
+    },
+    {
+      "week_start": "2011-11-28",
+      "actual": 328.0,
+      "predicted": 311.76
+    }
+  ],
+  "next_week_forecast": {
+    "week_start": "2011-12-05",
+    "forecast_weekly": 381.85
+  }
+}

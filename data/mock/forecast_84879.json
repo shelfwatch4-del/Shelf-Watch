@@ -1,0 +1,132 @@
+{
+  "product_id": "84879",
+  "description": "ASSORTED COLOUR BIRD ORNAMENT",
+  "history": [
+    {
+      "week_start": "2011-07-18",
+      "units": 166
+    },
+    {
+      "week_start": "2011-07-25",
+      "units": 244
+    },
+    {
+      "week_start": "2011-08-01",
+      "units": 237
+    },
+    {
+      "week_start": "2011-08-08",
+      "units": 210
+    },
+    {
+      "week_start": "2011-08-15",
+      "units": 228
+    },
+    {
+      "week_start": "2011-08-22",
+      "units": 281
+    },
+    {
+      "week_start": "2011-08-29",
+      "units": 163
+    },
+    {
+      "week_start": "2011-09-05",
+      "units": 267
+    },
+    {
+      "week_start": "2011-09-12",
+      "units": 235
+    },
+    {
+      "week_start": "2011-09-19",
+      "units": 274
+    },
+    {
+      "week_start": "2011-09-26",
+      "units": 241
+    },
+    {
+      "week_start": "2011-10-03",
+      "units": 227
+    },
+    {
+      "week_start": "2011-10-10",
+      "units": 282
+    },
+    {
+      "week_start": "2011-10-17",
+      "units": 271
+    },
+    {
+      "week_start": "2011-10-24",
+      "units": 290
+    },
+    {
+      "week_start": "2011-10-31",
+      "units": 290
+    },
+    {
+      "week_start": "2011-11-07",
+      "units": 352
+    },
+    {
+      "week_start": "2011-11-14",
+      "units": 390
+    },
+    {
+      "week_start": "2011-11-21",
+      "units": 361
+    },
+    {
+      "week_start": "2011-11-28",
+      "units": 337
+    }
+  ],
+  "test_predictions": [
+    {
+      "week_start": "2011-10-10",
+      "actual": 282.0,
+      "predicted": 252.98
+    },
+    {
+      "week_start": "2011-10-17",
+      "actual": 271.0,
+      "predicted": 324.63
+    },
+    {
+      "week_start": "2011-10-24",
+      "actual": 290.0,
+      "predicted": 295.63
+    },
+    {
+      "week_start": "2011-10-31",
+      "actual": 290.0,
+      "predicted": 267.99
+    },
+    {
+      "week_start": "2011-11-07",
+      "actual": 352.0,
+      "predicted": 377.5
+    },
+    {
+      "week_start": "2011-11-14",
+      "actual": 390.0,
+      "predicted": 382.27
+    },
+    {
+      "week_start": "2011-11-21",
+      "actual": 361.0,
+      "predicted": 349.17
+    },
+    {
+      "week_start": "2011-11-28",
+      "actual": 337.0,
+      "predicted": 350.68
+    }
+  ],
+  "next_week_forecast": {
+    "week_start": "2011-12-05",
+    "forecast_weekly": 365.64
+  }
+}

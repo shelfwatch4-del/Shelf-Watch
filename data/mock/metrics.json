@@ -1,0 +1,82 @@
+[
+  {
+    "model_name": "naive",
+    "split": "val",
+    "MAE": 42.5847,
+    "RMSE": 68.7253,
+    "WAPE": 0.1404,
+    "bias": -15.5627
+  },
+  {
+    "model_name": "naive",
+    "split": "test",
+    "MAE": 43.035,
+    "RMSE": 62.6493,
+    "WAPE": 0.1237,
+    "bias": -0.01
+  },
+  {
+    "model_name": "moving_avg_4",
+    "split": "val",
+    "MAE": 28.707,
+    "RMSE": 43.3206,
+    "WAPE": 0.0946,
+    "bias": 4.748
+  },
+  {
+    "model_name": "moving_avg_4",
+    "split": "test",
+    "MAE": 38.2186,
+    "RMSE": 50.1611,
+    "WAPE": 0.1098,
+    "bias": 0.3514
+  },
+  {
+    "model_name": "ridge",
+    "split": "val",
+    "MAE": 21.1255,
+    "RMSE": 29.6113,
+    "WAPE": 0.0697,
+    "bias": 2.4
+  },
+  {
+    "model_name": "ridge",
+    "split": "test",
+    "MAE": 28.0261,
+    "RMSE": 38.2194,
+    "WAPE": 0.0805,
+    "bias": -6.3879
+  },
+  {
+    "model_name": "random_forest",
+    "split": "val",
+    "MAE": 31.1535,
+    "RMSE": 44.5103,
+    "WAPE": 0.1027,
+    "bias": -16.7025
+  },
+  {
+    "model_name": "random_forest",
+    "split": "test",
+    "MAE": 43.828,
+    "RMSE": 60.8377,
+    "WAPE": 0.1259,
+    "bias": -21.971
+  },
+  {
+    "model_name": "lightgbm",
+    "split": "val",
+    "MAE": 26.0165,
+    "RMSE": 36.9802,
+    "WAPE": 0.0858,
+    "bias": -0.099
+  },
+  {
+    "model_name": "lightgbm",
+    "split": "test",
+    "MAE": 23.4737,
+    "RMSE": 34.257,
+    "WAPE": 0.0674,
+    "bias": -1.629
+  }
+]

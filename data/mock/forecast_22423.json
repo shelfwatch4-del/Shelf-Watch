@@ -1,0 +1,132 @@
+{
+  "product_id": "22423",
+  "description": "REGENCY CAKESTAND 3 TIER",
+  "history": [
+    {
+      "week_start": "2011-07-18",
+      "units": 123
+    },
+    {
+      "week_start": "2011-07-25",
+      "units": 187
+    },
+    {
+      "week_start": "2011-08-01",
+      "units": 153
+    },
+    {
+      "week_start": "2011-08-08",
+      "units": 193
+    },
+    {
+      "week_start": "2011-08-15",
+      "units": 174
+    },
+    {
+      "week_start": "2011-08-22",
+      "units": 170
+    },
+    {
+      "week_start": "2011-08-29",
+      "units": 153
+    },
+    {
+      "week_start": "2011-09-05",
+      "units": 209
+    },
+    {
+      "week_start": "2011-09-12",
+      "units": 175
+    },
+    {
+      "week_start": "2011-09-19",
+      "units": 133
+    },
+    {
+      "week_start": "2011-09-26",
+      "units": 171
+    },
+    {
+      "week_start": "2011-10-03",
+      "units": 260
+    },
+    {
+      "week_start": "2011-10-10",
+      "units": 156
+    },
+    {
+      "week_start": "2011-10-17",
+      "units": 224
+    },
+    {
+      "week_start": "2011-10-24",
+      "units": 230
+    },
+    {
+      "week_start": "2011-10-31",
+      "units": 246
+    },
+    {
+      "week_start": "2011-11-07",
+      "units": 253
+    },
+    {
+      "week_start": "2011-11-14",
+      "units": 208
+    },
+    {
+      "week_start": "2011-11-21",
+      "units": 179
+    },
+    {
+      "week_start": "2011-11-28",
+      "units": 160
+    }
+  ],
+  "test_predictions": [
+    {
+      "week_start": "2011-10-10",
+      "actual": 156.0,
+      "predicted": 132.32
+    },
+    {
+      "week_start": "2011-10-17",
+      "actual": 224.0,
+      "predicted": 208.43
+    },
+    {
+      "week_start": "2011-10-24",
+      "actual": 230.0,
+      "predicted": 203.74
+    },
+    {
+      "week_start": "2011-10-31",
+      "actual": 246.0,
+      "predicted": 222.17
+    },
+    {
+      "week_start": "2011-11-07",
+      "actual": 253.0,
+      "predicted": 251.69
+    },
+    {
+      "week_start": "2011-11-14",
+      "actual": 208.0,
+      "predicted": 166.9
+    },
+    {
+      "week_start": "2011-11-21",
+      "actual": 179.0,
+      "predicted": 187.11
+    },
+    {
+      "week_start": "2011-11-28",
+      "actual": 160.0,
+      "predicted": 169.26
+    }
+  ],
+  "next_week_forecast": {
+    "week_start": "2011-12-05",
+    "forecast_weekly": 223.04
+  }
+}

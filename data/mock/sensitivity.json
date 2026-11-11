@@ -1,0 +1,86 @@
+[
+  {
+    "lead_time_weeks": 1,
+    "service_level": 0.9,
+    "n_high": 1,
+    "n_medium": 0,
+    "n_low": 9
+  },
+  {
+    "lead_time_weeks": 1,
+    "service_level": 0.95,
+    "n_high": 1,
+    "n_medium": 1,
+    "n_low": 8
+  },
+  {
+    "lead_time_weeks": 1,
+    "service_level": 0.99,
+    "n_high": 1,
+    "n_medium": 1,
+    "n_low": 8
+  },
+  {
+    "lead_time_weeks": 2,
+    "service_level": 0.9,
+    "n_high": 2,
+    "n_medium": 0,
+    "n_low": 8
+  },
+  {
+    "lead_time_weeks": 2,
+    "service_level": 0.95,
+    "n_high": 2,
+    "n_medium": 0,
+    "n_low": 8
+  },
+  {
+    "lead_time_weeks": 2,
+    "service_level": 0.99,
+    "n_high": 2,
+    "n_medium": 1,
+    "n_low": 7
+  },
+  {
+    "lead_time_weeks": 3,
+    "service_level": 0.9,
+    "n_high": 7,
+    "n_medium": 2,
+    "n_low": 1
+  },
+  {
+    "lead_time_weeks": 3,
+    "service_level": 0.95,
+    "n_high": 7,
+    "n_medium": 2,
+    "n_low": 1
+  },
+  {
+    "lead_time_weeks": 3,
+    "service_level": 0.99,
+    "n_high": 7,
+    "n_medium": 2,
+    "n_low": 1
+  },
+  {
+    "lead_time_weeks": 4,
+    "service_level": 0.9,
+    "n_high": 10,
+    "n_medium": 0,
+    "n_low": 0
+  },
+  {
+    "lead_time_weeks": 4,
+    "service_level": 0.95,
+    "n_high": 10,
+    "n_medium": 0,
+    "n_low": 0
+  },
+  {
+    "lead_time_weeks": 4,
+    "service_level": 0.99,
+    "n_high": 10,
+    "n_medium": 0,
+    "n_low": 0
+  }
+]

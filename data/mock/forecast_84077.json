@@ -1,0 +1,132 @@
+{
+  "product_id": "84077",
+  "description": "WORLD WAR 2 GLIDERS ASSTD DESIGNS",
+  "history": [
+    {
+      "week_start": "2011-07-18",
+      "units": 295
+    },
+    {
+      "week_start": "2011-07-25",
+      "units": 452
+    },
+    {
+      "week_start": "2011-08-01",
+      "units": 392
+    },
+    {
+      "week_start": "2011-08-08",
+      "units": 310
+    },
+    {
+      "week_start": "2011-08-15",
+      "units": 282
+    },
+    {
+      "week_start": "2011-08-22",
+      "units": 356
+    },
+    {
+      "week_start": "2011-08-29",
+      "units": 348
+    },
+    {
+      "week_start": "2011-09-05",
+      "units": 389
+    },
+    {
+      "week_start": "2011-09-12",
+      "units": 485
+    },
+    {
+      "week_start": "2011-09-19",
+      "units": 332
+    },
+    {
+      "week_start": "2011-09-26",
+      "units": 403
+    },
+    {
+      "week_start": "2011-10-03",
+      "units": 416
+    },
+    {
+      "week_start": "2011-10-10",
+      "units": 371
+    },
+    {
+      "week_start": "2011-10-17",
+      "units": 479
+    },
+    {
+      "week_start": "2011-10-24",
+      "units": 463
+    },
+    {
+      "week_start": "2011-10-31",
+      "units": 474
+    },
+    {
+      "week_start": "2011-11-07",
+      "units": 438
+    },
+    {
+      "week_start": "2011-11-14",
+      "units": 464
+    },
+    {
+      "week_start": "2011-11-21",
+      "units": 418
+    },
+    {
+      "week_start": "2011-11-28",
+      "units": 493
+    }
+  ],
+  "test_predictions": [
+    {
+      "week_start": "2011-10-10",
+      "actual": 371.0,
+      "predicted": 396.56
+    },
+    {
+      "week_start": "2011-10-17",
+      "actual": 479.0,
+      "predicted": 485.85
+    },
+    {
+      "week_start": "2011-10-24",
+      "actual": 463.0,
+      "predicted": 475.54
+    },
+    {
+      "week_start": "2011-10-31",
+      "actual": 474.0,
+      "predicted": 548.59
+    },
+    {
+      "week_start": "2011-11-07",
+      "actual": 438.0,
+      "predicted": 452.09
+    },
+    {
+      "week_start": "2011-11-14",
+      "actual": 464.0,
+      "predicted": 486.83
+    },
+    {
+      "week_start": "2011-11-21",
+      "actual": 418.0,
+      "predicted": 515.8
+    },
+    {
+      "week_start": "2011-11-28",
+      "actual": 493.0,
+      "predicted": 478.58
+    }
+  ],
+  "next_week_forecast": {
+    "week_start": "2011-12-05",
+    "forecast_weekly": 465.75
+  }
+}
