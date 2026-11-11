@@ -1,0 +1,8 @@
+data/raw/
+*.xlsx
+*.parquet
+models/*.joblib
+__pycache__/
+.venv/
+node_modules/
+

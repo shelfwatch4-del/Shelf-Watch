@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Shelfwatch: demand and stockout risk</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Public+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#E4E9ED;--pn:#F5F7F8;--ink:#16212B;--mu:#566470;--ln:#BFC9D1;--pl:#2B3C4B;--bin:#D3DAE0;--y:#FFC72C;--hi:#D93A2F;--me:#E8791A;--lo:#1F8F5F;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1A24;--pn:#16232F;--ink:#E8EEF3;--mu:#8FA0AF;--ln:#2A3B4A;--pl:#4A6074;--bin:#1D2D3B;--y:#FFCB3D;--hi:#FF6154;--me:#FF9A3C;--lo:#3DD598}}
+:root[data-theme="dark"]{--bg:#0F1A24;--pn:#16232F;--ink:#E8EEF3;--mu:#8FA0AF;--ln:#2A3B4A;--pl:#4A6074;--bin:#1D2D3B;--y:#FFCB3D;--hi:#FF6154;--me:#FF9A3C;--lo:#3DD598}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*:before,*:after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 'Public Sans',system-ui,sans-serif}
+h1,h2,.num{font-family:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;font-weight:800;line-height:1.02;margin:0}
+h2{font-size:26px;margin-bottom:10px}
+.wrap{max-width:1160px;margin:0 auto;padding:16px 18px 40px}
+.top{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;padding:4px 0 14px}
+.brand{font:800 32px 'Big Shoulders Display',Impact,sans-serif;display:flex;align-items:center;gap:10px}
+.brand i{width:24px;height:26px;border:solid var(--ink);border-width:0 3px;background:linear-gradient(var(--y),var(--y)) 0 30%/100% 5px no-repeat,linear-gradient(var(--y),var(--y)) 0 75%/100% 5px no-repeat}
+nav{display:flex;flex-wrap:wrap;gap:6px;flex:1;justify-content:center}
+nav a{padding:5px 14px;border:1px solid var(--ln);border-left:6px solid var(--y);background:var(--pn);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px}
+nav a.on{background:var(--pl);color:#fff;border-color:var(--pl);border-left-color:var(--y)}
+a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--y);outline-offset:2px}
+.btn{font:600 14px 'Public Sans',sans-serif;border:1px solid var(--ink);background:transparent;color:var(--ink);padding:6px 12px;cursor:pointer;border-radius:2px}
+.tape{position:relative;border:1px solid var(--ln);background:var(--pn);padding:10px 14px 10px 24px;font-size:14px;margin-bottom:14px}
+.tape:before{content:"";position:absolute;inset:0 auto 0 0;width:9px;background:repeating-linear-gradient(-45deg,var(--y) 0 6px,#1b1b1b 6px 12px)}
+.rail{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr)) auto;gap:20px;align-items:end;padding:14px 16px;border:1px solid var(--ln);background:var(--pn)}
+.rail label{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;gap:8px}
+.rail output{font:800 24px 'Big Shoulders Display',Impact,sans-serif}
+input[type=range]{width:100%;accent-color:var(--pl)}
+.hero{padding:30px 0 16px}
+h1{font-size:clamp(32px,6.4vw,64px);max-width:17em}
+.hero p{margin:10px 0 0;color:var(--mu);max-width:44em}
+.wall{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:26px 8px;padding:22px 16px 14px;border:1px solid var(--ln);background:var(--pn)}
+.bin{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:12px;font-size:11px;color:var(--mu)}
+.bin:focus-visible{outline:3px solid var(--y)}
+.bin:hover .tank{outline:2px solid var(--ink)}
+.tank{position:relative;width:100%;height:150px;background:var(--bin);border:2px solid var(--pl);border-bottom:0;box-shadow:0 8px 0 var(--pl)}
+.HIGH{--c:var(--hi)}.MEDIUM{--c:var(--me)}.LOW{--c:var(--lo)}
+.fill{position:absolute;inset:auto 0 0 0;height:var(--h,0%);background:var(--c);transition:height .7s cubic-bezier(.2,.8,.2,1) var(--d,0s)}
+.live .fill{transition-delay:0s}
+.rp,.lt{position:absolute;left:-4px;right:-4px;transition:bottom .7s cubic-bezier(.2,.8,.2,1)}
+.rp{bottom:var(--rp,0%);height:4px;background:var(--y);box-shadow:0 0 0 1px var(--ink)}
+.lt{bottom:var(--lt,0%);border-top:2px dashed var(--hi)}
+.key{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:13px;color:var(--mu);margin-top:12px}
+.key s{display:inline-block;width:22px;height:0;vertical-align:middle;margin-right:6px;text-decoration:none}
+.pn{border:1px solid var(--ln);background:var(--pn);padding:16px;margin-top:16px}
+.b{display:inline-block;padding:0 8px;border:1.5px solid var(--c);color:var(--c);font-weight:600;font-size:13px;border-radius:2px;white-space:nowrap}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:12px}
+select{font:inherit;padding:6px 8px;background:var(--bg);color:var(--ink);border:1px solid var(--ink);max-width:100%}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--ln);white-space:nowrap}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+th{cursor:pointer;color:var(--mu);font-weight:600;font-size:13px}
+tbody tr{cursor:pointer}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--ln);border:1px solid var(--ln);margin-top:14px}
+.tiles div{background:var(--pn);padding:10px 12px;font-size:13px;color:var(--mu)}
+.tiles .num{display:block;font-size:30px;color:var(--ink)}
+.chart{position:relative}
+.chart svg{width:100%;height:auto;display:block}
+.chart text{fill:var(--mu);font:11px 'Public Sans',sans-serif}
+.tip{position:absolute;top:6px;pointer-events:none;background:var(--ink);color:var(--bg);padding:4px 8px;font-size:12px;display:none;white-space:nowrap}
+.heat{display:grid;grid-template-columns:90px repeat(3,1fr);gap:4px;text-align:center;font-size:13px;color:var(--mu)}
+.heat .c{padding:12px 4px;background:color-mix(in srgb,var(--hi) var(--a),var(--bin));color:var(--ink)}
+.heat .on{outline:3px solid var(--y)}
+.heat .num{font-size:26px;display:block}
+.bars{display:flex;align-items:flex-end;gap:10px;height:130px;margin-top:8px}
+.bars div{flex:1;background:var(--pl);position:relative;min-width:20px}
+.bars span{position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:12px;color:var(--mu)}
+.bars em{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:11px;font-style:normal;color:var(--mu)}
+ul.as{padding-left:20px;margin:6px 0}
+.pend{color:var(--mu)}
+footer{margin-top:26px;font-size:13px;color:var(--mu);max-width:60em}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<div class="wrap">
+<div class="top"><div class="brand"><i></i>Shelfwatch</div><nav id="nav"></nav><button class="btn" id="th">Light or dark</button></div>
+<div class="tape"><b>Inventory levels are simulated.</b> The dataset contains sales only, not stock-on-hand. Risk flags show how the rule behaves under the stated assumptions, not real stock positions.</div>
+<section class="rail" aria-label="Assumptions">
+<div><label for="L">How long a delivery takes <output id="oL"></output></label><input id="L" type="range" min="1" max="4" step="1" value="1"></div>
+<div><label for="sl">Chance of not running out <output id="osl"></output></label><input id="sl" type="range" min="80" max="99" step="1" value="95"></div>
+<div><label for="isw">Starting stock, in weeks of sales <output id="oisw"></output></label><input id="isw" type="range" min="0.5" max="8" step="0.5" value="3"></div>
+<button class="btn" id="rs">Reset</button></section>
+<main id="view"></main>
+<footer>Real UCI sales for the 30 best-selling products. The forecast shown is the 4-week moving-average baseline; trained models replace it in the next phase. Risk values are recomputed in your browser with the project&rsquo;s formulas, and the Python risk engine behind the API will replace this step.</footer>
+</div>
+<script>
+const D={"w0":"2010-12-06","closed":3,"split":44,"P":[{"id":"85099B","d":"Jumbo Bag Red Retrospot","u":[852,427,180,0,1374,225,594,502,965,288,985,810,624,738,826,1379,1103,975,616,549,385,380,1206,978,933,273,883,959,841,815,1364,431,733,540,1050,1373,1356,1518,717,556,743,1667,929,2189,947,1045,600,1063,1680,1602,753,1050]},{"id":"84077","d":"World War 2 Gliders Asstd Designs","u":[513,1077,100,0,625,289,0,530,725,48,424,257,1008,1104,480,192,1776,392,1200,1303,1200,917,1152,1008,576,773,480,145,961,291,1013,1104,726,823,98,577,528,1056,290,432,1296,587,1008,989,730,975,1008,974,1167,1170,915,689]},{"id":"21212","d":"Pack Of 72 Retrospot Cake Cases","u":[1104,664,883,0,324,619,793,557,558,347,526,718,689,814,1303,527,785,669,600,941,315,788,927,599,360,229,619,856,181,123,1112,253,335,1083,445,335,930,508,459,712,835,1028,359,477,499,507,521,1042,362,590,342,546]},{"id":"22197","d":"Popcorn Holder","u":[1012,981,252,0,687,344,261,351,107,239,920,1312,370,779,583,237,885,564,664,232,310,372,381,1300,742,533,410,437,345,430,636,157,621,436,758,1495,518,706,956,516,570,682,1155,835,884,1144,1263,1156,2340,2495,2435,2755]},{"id":"85123A","d":"White Hanging Heart T-Light Holder","u":[1122,1509,198,0,973,1349,662,546,588,517,365,401,380,454,464,365,582,374,474,972,375,1144,892,794,898,629,390,391,236,258,264,1166,729,780,441,477,297,775,396,449,663,710,408,165,683,234,447,1195,594,1326,904,731]},{"id":"84879","d":"Assorted Colour Bird Ornament","u":[789,638,40,0,480,442,139,344,937,160,588,328,213,642,968,391,585,753,815,612,264,594,1201,595,565,384,292,446,270,292,460,372,519,478,1400,835,556,850,216,488,908,701,799,589,420,829,778,968,1028,1326,1037,953]},{"id":"22178","d":"Victorian Glass Hanging T-Light","u":[525,593,130,0,396,204,339,333,482,242,133,510,406,290,654,526,952,493,626,645,95,600,596,763,608,739,543,276,122,349,590,154,532,236,824,308,318,456,493,230,248,425,90,1003,303,211,766,359,288,449,373,755]},{"id":"21977","d":"Pack Of 60 Pink Paisley Cake Cases","u":[232,549,534,0,179,107,154,144,811,75,464,239,276,684,1127,408,386,159,751,841,255,555,498,173,605,20,337,471,545,160,117,191,1091,742,271,248,639,756,205,664,670,402,213,757,270,118,98,158,303,415,392,239]},{"id":"15036","d":"Assorted Colours Silk Fan","u":[21,35,30,0,18,159,39,112,1073,68,642,128,91,369,1102,99,1013,147,744,174,673,852,1498,1403,397,193,1370,1165,169,167,1098,352,510,518,703,268,60,60,181,215,64,93,30,601,224,194,101,83,107,104,237,143]},{"id":"22492","d":"Mini Paint Set Vintage","u":[918,227,181,0,552,219,38,697,541,216,108,180,108,877,696,252,427,324,216,704,180,216,699,469,288,108,361,665,219,72,432,698,396,252,291,180,696,324,664,192,841,334,576,664,257,1142,792,226,1532,679,402,301]},{"id":"22386","d":"Jumbo Bag Pink Polkadot","u":[270,107,9,0,543,323,73,199,225,95,409,260,174,374,763,586,675,125,119,155,282,154,401,179,560,410,478,243,611,456,454,315,307,403,382,551,586,619,248,657,478,809,665,1429,437,334,743,313,516,522,253,436]},{"id":"47566","d":"Party Bunting","u":[165,29,24,0,145,85,69,171,232,292,189,157,255,205,606,325,376,460,542,648,276,984,756,754,839,434,663,507,598,276,901,354,935,520,431,330,402,471,207,300,334,158,209,183,106,211,78,102,135,218,455,105]},{"id":"22616","d":"Pack Of 12 London Tissues","u":[319,223,607,0,110,101,85,169,584,611,990,118,122,1036,640,134,1048,610,402,93,216,128,130,736,84,80,46,1104,280,537,75,78,936,172,1187,138,149,413,485,76,200,291,577,525,65,546,293,702,254,967,101,636]},{"id":"20725","d":"Lunch Bag Red Retrospot","u":[283,187,44,0,462,642,128,171,417,255,291,369,175,148,278,379,587,247,305,368,164,289,885,445,684,184,585,448,238,303,440,231,596,385,603,725,433,341,202,524,329,492,318,322,443,276,314,323,556,650,276,331]},{"id":"85099F","d":"Jumbo Bag Strawberry","u":[162,229,11,0,703,349,269,93,381,70,248,276,285,401,592,676,742,266,166,6,100,0,428,142,423,407,433,234,605,351,513,29,140,434,547,320,328,872,278,189,302,579,206,1052,171,433,30,203,311,196,52,436]},{"id":"84755","d":"Colour Glass T-Light Holder Hangin","u":[144,160,8,0,232,56,216,92,48,208,176,297,164,472,172,264,150,236,632,604,298,792,724,722,676,496,572,632,196,520,496,332,520,306,228,688,204,464,272,380,392,244,48,288,64,196,112,108,324,152,348,40]},{"id":"17003","d":"Brocade Ring Purse","u":[263,90,0,0,624,8,591,960,146,0,290,0,144,252,1476,48,529,146,73,11,267,78,510,552,553,360,673,597,624,88,318,772,289,149,146,144,78,700,291,180,109,617,691,376,72,204,1204,100,109,315,474,130]},{"id":"84991","d":"60 Teatime Fairy Cake Cases","u":[266,429,607,0,170,294,274,172,385,83,259,194,134,598,538,239,736,271,477,702,246,265,532,232,301,136,90,304,94,185,645,133,124,402,248,340,648,155,141,910,613,426,220,157,193,729,440,263,197,547,360,136]},{"id":"22355","d":"Charlotte Bag Suki Design","u":[645,462,567,0,173,463,191,457,148,212,370,480,68,418,334,344,534,184,227,279,179,173,578,247,354,152,243,405,161,316,247,194,280,287,229,550,183,432,261,229,421,207,170,364,281,316,535,274,470,441,671,712]},{"id":"20724","d":"Red Retrospot Charlotte Bag","u":[284,210,171,0,278,385,126,142,311,217,197,426,223,326,182,364,502,178,271,194,225,171,610,202,186,244,554,159,358,598,245,136,339,286,505,425,331,562,120,580,355,614,236,332,313,447,416,260,552,455,735,550]},{"id":"84946","d":"Antique Silver T-Light Glass","u":[857,646,85,0,328,97,237,129,160,425,225,160,243,91,396,367,161,196,240,259,161,380,242,411,595,269,576,294,156,372,463,96,507,159,589,163,540,264,184,271,115,501,378,342,499,424,228,865,1079,815,577,489]},{"id":"22151","d":"Place Setting White Heart","u":[103,222,1,0,171,184,218,24,776,63,168,292,39,230,154,112,514,468,489,105,394,575,610,320,560,173,585,462,174,61,54,666,527,699,936,60,507,96,106,649,209,140,110,54,77,194,173,155,60,124,262,239]},{"id":"22469","d":"Heart Of Wicker Small","u":[869,404,204,0,366,698,405,555,368,206,239,454,220,588,8,0,68,12,0,30,0,0,0,783,947,421,366,261,154,236,336,317,302,125,199,149,78,117,130,237,359,1055,226,255,100,336,383,892,305,361,213,689]},{"id":"22961","d":"Jam Making Set Printed","u":[521,600,125,0,155,683,197,324,294,167,361,396,371,429,318,275,436,131,11,9,3,1,387,306,203,141,212,182,165,226,243,169,193,492,635,291,118,350,166,463,427,453,206,513,477,290,162,360,289,355,516,269]},{"id":"21213","d":"Pack Of 72 Skull Cake Cases","u":[238,275,705,0,127,132,223,184,243,38,179,184,316,128,340,208,444,184,363,543,152,362,176,82,146,255,178,503,236,101,537,206,160,231,241,88,612,231,219,800,745,420,242,274,176,384,505,227,117,163,64,210]},{"id":"21915","d":"Red  Harmonica In Box","u":[243,314,13,0,285,72,116,84,556,25,39,125,604,319,192,120,742,107,96,125,364,152,160,312,85,305,84,434,338,126,85,175,231,186,381,637,336,366,1021,262,307,545,312,771,252,830,351,1032,661,351,22,480]},{"id":"71459","d":"Hanging Jam Jar T-Light Holder","u":[340,32,60,0,108,348,308,112,12,205,240,240,184,192,404,232,148,840,408,262,233,788,604,264,424,176,176,422,412,216,382,388,380,96,264,188,216,120,100,340,604,120,276,192,129,52,96,100,232,384,60,124]},{"id":"22629","d":"Spaceboy Lunch Box","u":[263,284,147,0,77,556,626,137,460,69,352,353,389,190,228,207,654,205,137,81,84,125,556,216,187,476,125,225,134,170,41,68,277,114,233,571,399,598,135,119,133,419,196,304,127,265,284,213,510,308,345,162]},{"id":"21931","d":"Jumbo Storage Bag Suki","u":[229,174,62,0,226,391,80,259,147,240,512,174,173,117,268,410,359,243,182,70,129,181,463,196,271,144,230,113,244,437,351,186,287,231,393,307,415,356,312,276,331,288,260,454,263,140,372,245,507,189,212,258]},{"id":"22423","d":"Regency Cakestand 3 Tier","u":[851,442,178,0,251,407,139,231,150,139,400,204,349,190,308,329,334,282,366,186,325,171,366,307,169,263,208,174,143,85,131,292,341,342,180,178,210,242,147,150,219,147,149,409,214,268,135,279,169,235,261,236]}]},N=52,SP=D.split,CL=D.closed,T0=Date.parse(D.w0),$=s=>document.querySelector(s);
+const fmt=i=>new Date(T0+i*6048e5).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+const sum=a=>a.reduce((x,y)=>x+y,0),mean=a=>a.length?sum(a)/a.length:0,std=a=>{const m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)**2)))};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ma=(u,t)=>{const w=[];for(let i=t-1;i>=0&&w.length<4;i--)if(i!==CL)w.push(u[i]);return mean(w)};
+const ic={HIGH:'▲',MEDIUM:'◆',LOW:'●'},RK={HIGH:0,MEDIUM:1,LOW:2};
+const rng=(a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296})(42);
+D.P.sort((a,b)=>a.id<b.id?-1:1).forEach(p=>{const u=p.u;p.nz=.5+rng();p.pred=u.map((_,t)=>ma(u,t));p.nai=u.map((_,t)=>t?(t-1===CL?u[t-2]:u[t-1]):0);
+p.avg=mean(u.slice(0,SP).filter((_,i)=>i!==CL));p.fc=ma(u,N);const r=[];for(let t=5;t<SP;t++)if(t!==CL)r.push(u[t]-p.pred[t]);p.sg=std(r);p.tot=sum(u)});
+D.P.sort((a,b)=>b.tot-a.tot);
+const zf=p=>{const t=Math.sqrt(-2*Math.log(1-p));return t-(2.515517+.802853*t+.010328*t*t)/(1+1.432788*t+.189269*t*t+.001308*t**3)};
+const S0={L:1,sl:.95,isw:3},S={...S0,sort:'rank',dir:1,f:'ALL',sel:0};
+// Swap point: replace calc() with a fetch to POST /risk when the FastAPI service is connected.
+function calc(q=S){const z=zf(q.sl);return D.P.map(p=>{const on=q.isw*p.avg*p.nz,fl=p.fc*q.L,ss=z*p.sg*Math.sqrt(q.L),rop=fl+ss;
+return{product_id:p.id,description:p.d,forecast_weekly:p.fc,forecast_lead_time:fl,on_hand:on,safety_stock:ss,reorder_point:rop,days_of_cover:p.fc>0?Math.min(999,on/(p.fc/7)):999,risk_level:on<fl?'HIGH':on<rop?'MEDIUM':'LOW'}})}
+const cnt=r=>r.reduce((c,x)=>(c[x.risk_level]++,c),{HIGH:0,MEDIUM:0,LOW:0});
+const n0=v=>Math.round(v).toLocaleString('en-GB'),n1=v=>v.toFixed(1);
+S.sel=0;
+const V={
+overview(){return `<div class="hero"><h1 id="hl"></h1><p id="sub"></p></div>
+<div class="wall" id="wall">${D.P.map((p,i)=>`<button class="bin" data-i="${i}" style="--d:${i*25}ms" aria-label="${esc(p.d)}"><div class="tank"><i class="fill"></i><u class="rp"></u><u class="lt"></u></div>${esc(p.id)}</button>`).join('')}</div>
+<div class="key"><span><s style="border-top:10px solid var(--lo)"></s>Colour shows risk: green low, orange medium, red high</span><span><s style="border-top:4px solid var(--y);box-shadow:0 0 0 1px var(--ink)"></s>Reorder point</span><span><s style="border-top:2px dashed var(--hi)"></s>Demand while the delivery is on its way</span></div>
+<p class="key">Each bin is one product, filled to its simulated stock. Bins are ordered by total units sold. Select a bin to see its forecast.</p>`},
+explorer(){const p=D.P[S.sel],x=calc()[S.sel];
+return `<div class="pn"><div class="row"><label for="sel">Product</label><select id="sel">${D.P.map((q,i)=>`<option value="${i}"${i==S.sel?' selected':''}>${esc(q.id)}: ${esc(q.d)}</option>`).join('')}</select><span class="b ${x.risk_level}">${ic[x.risk_level]} ${x.risk_level} risk</span></div>
+<div class="chart">${chart(p)}<div class="tip" id="tip"></div></div>
+<p class="key"><span><s style="border-top:3px solid var(--ink)"></s>Actual weekly units</span><span><s style="border-top:3px dashed var(--pl)"></s>Baseline forecast</span><span><s style="border-top:10px solid var(--y)"></s>Next-week forecast</span></p>
+<div class="tiles"><div><span class="num">${n0(p.avg)}</span>average units a week</div><div><span class="num">${n0(p.fc)}</span>forecast for ${fmt(N)}</div><div><span class="num">${n0(p.sg)}</span>typical forecast miss</div><div><span class="num">${n0(x.on_hand)}</span>simulated stock</div><div><span class="num">${n0(x.reorder_point)}</span>reorder point</div><div><span class="num">${x.days_of_cover>=999?'–':n1(x.days_of_cover)}</span>days of cover</div></div></div>`},
+risk(){let r=calc();const c=cnt(r);if(S.f!='ALL')r=r.filter(x=>x.risk_level==S.f);
+const k=S.sort,g=x=>k=='rank'?RK[x.risk_level]*1e6+x.days_of_cover:k=='risk_level'?RK[x.risk_level]:x[k];
+r.sort((a,b)=>(typeof g(a)=='string'?g(a).localeCompare(g(b)):g(a)-g(b))*S.dir);
+const H=[['product_id','Code'],['description','Product'],['forecast_weekly','Forecast a week'],['on_hand','Simulated stock'],['safety_stock','Safety stock'],['reorder_point','Reorder point'],['days_of_cover','Days of cover'],['risk_level','Risk']];
+return `<div class="pn"><h2>Risk table</h2><div class="row">${['ALL','HIGH','MEDIUM','LOW'].map(f=>`<button class="btn" data-f="${f}"${S.f==f?' style="background:var(--pl);color:#fff"':''}>${f=='ALL'?'All '+D.P.length:ic[f]+' '+f+' '+c[f]}</button>`).join('')}<button class="btn" id="csv">Download CSV</button></div>
+<div class="scroll"><table><thead><tr>${H.map(([a,b])=>`<th data-k="${a}">${b}${S.sort==a?(S.dir>0?' ↑':' ↓'):''}</th>`).join('')}</tr></thead><tbody>${r.map(x=>`<tr data-id="${esc(x.product_id)}"><td>${esc(x.product_id)}</td><td>${esc(x.description)}</td><td>${n0(x.forecast_weekly)}</td><td>${n0(x.on_hand)}</td><td>${n0(x.safety_stock)}</td><td>${n0(x.reorder_point)}</td><td>${x.days_of_cover>=999?'–':n1(x.days_of_cover)}</td><td><span class="b ${x.risk_level}">${ic[x.risk_level]} ${x.risk_level}</span></td></tr>`).join('')}</tbody></table></div></div>`},
+models(){const ev=k=>{let a=0,q=0,b=0,n=0,t0=0;D.P.forEach(p=>{for(let t=SP;t<N;t++){const e=p[k][t]-p.u[t];a+=Math.abs(e);q+=e*e;b+=e;t0+=p.u[t];n++}});return{MAE:a/n,RMSE:Math.sqrt(q/n),WAPE:a/t0,bias:b/n}};
+const rows=[['Naive: last week',ev('nai')],['4-week moving average',ev('pred')]];
+const wk=[];for(let t=SP;t<N;t++){let a=0,s=0;D.P.forEach(p=>{a+=Math.abs(p.pred[t]-p.u[t]);s+=p.u[t]});wk.push(a/s)}const mx=Math.max(...wk);
+return `<div class="pn"><h2>Model performance</h2><p class="pend">Measured on the last 8 weeks (${fmt(SP)} to ${fmt(N-1)}) for these 30 products. Lower is better for every column except bias, where zero is best.</p>
+<div class="scroll"><table><thead><tr><th>Model</th><th></th><th>MAE</th><th>RMSE</th><th>WAPE</th><th>Bias</th></tr></thead><tbody>${rows.map(([m,e])=>`<tr><td>${m}</td><td></td><td>${n1(e.MAE)}</td><td>${n1(e.RMSE)}</td><td>${(e.WAPE*100).toFixed(1)}%</td><td>${e.bias>0?'+':''}${n1(e.bias)}</td></tr>`).join('')}${['Ridge regression','Random forest','LightGBM'].map(m=>`<tr class="pend"><td>${m}</td><td></td><td colspan="4">Added when the trained models are ready</td></tr>`).join('')}</tbody></table></div></div>
+<div class="pn"><h2>Error by test week, 4-week average</h2><div class="bars" style="margin-bottom:26px">${wk.map((v,i)=>`<div style="height:${v/mx*100}%"><span>${(v*100).toFixed(0)}%</span><em>${fmt(SP+i)}</em></div>`).join('')}</div></div>`},
+sensitivity(){const sls=[.9,.95,.99],n=D.P.length;
+const cell=(L,sl)=>{const c=cnt(calc({...S,L,sl}));return `<div class="c${L==S.L&&sl==S.sl?' on':''}" style="--a:${Math.round((c.HIGH+c.MEDIUM)/n*70)}%"><span class="num">${c.HIGH}</span>high<br>${c.MEDIUM} medium</div>`};
+return `<div class="pn"><h2>How the answer changes</h2><p class="pend">Products flagged as the delivery time and service level change, using your starting-stock setting. The outlined cell is your current setting.</p>
+<div class="heat"><span></span>${sls.map(s=>`<b>${s*100}% service</b>`).join('')}${[1,2,3,4].map(L=>`<b>${L} week${L>1?'s':''}</b>${sls.map(s=>cell(L,s)).join('')}`).join('')}</div></div>
+<div class="pn"><h2>Assumptions</h2><ul class="as"><li>Stock is simulated: starting stock is the chosen number of weeks of average sales, times a fixed random factor between 0.5 and 1.5 for each product (seed 42).</li><li>Demand during delivery is the weekly forecast times the delivery weeks.</li><li>Safety stock is z times the typical forecast miss times the square root of the delivery weeks, where z comes from the service level.</li><li>Reorder point is demand during delivery plus safety stock.</li><li><b>High</b> risk: stock is below demand during delivery. <b>Medium</b>: stock is below the reorder point. <b>Low</b>: otherwise.</li><li>Days of cover is stock divided by the forecast daily sales.</li></ul></div>`}};
+function chart(p){const W=760,H=300,L=46,R=14,T=14,B=28,mx=Math.max(...p.u,p.fc,...p.pred.slice(SP))*1.12||1,X=i=>L+i*(W-L-R)/N,Y=v=>H-B-v/mx*(H-T-B),
+pt=(a,s,e)=>{let d='';for(let i=s;i<=e;i++)d+=(i==s?'M':'L')+X(i).toFixed(1)+' '+Y(a[i]).toFixed(1);return d};
+const gl=[0,.25,.5,.75,1].map(f=>`<line x1="${L}" x2="${W-R}" y1="${Y(mx*f)}" y2="${Y(mx*f)}" stroke="var(--ln)"/><text x="${L-6}" y="${Y(mx*f)+4}" text-anchor="end">${n0(mx*f)}</text>`).join('');
+const xt=[0,8,16,24,32,40,48].map(i=>`<text x="${X(i)}" y="${H-8}" text-anchor="middle">${fmt(i)}</text>`).join('');
+return `<svg viewBox="0 0 ${W} ${H}" id="svg" role="img" aria-label="Weekly units with test period and next-week forecast">${gl}${xt}
+<rect x="${X(SP)}" y="${T}" width="${X(N)-X(SP)}" height="${H-T-B}" fill="var(--y)" opacity=".16"/><text x="${X(SP)+4}" y="${T+12}">test weeks</text>
+<rect x="${X(CL)-5}" y="${T}" width="10" height="${H-T-B}" fill="var(--hi)" opacity=".18"/><text x="${X(CL)+8}" y="${T+12}">shop closed</text>
+<path d="${pt(p.u,0,N-1)}" fill="none" stroke="var(--ink)" stroke-width="2"/>
+<path d="${pt(p.pred,SP,N-1)}L${X(N)} ${Y(p.fc)}" fill="none" stroke="var(--pl)" stroke-width="2.5" stroke-dasharray="6 4"/>
+<rect x="${X(N)-7}" y="${Y(p.fc)-7}" width="14" height="14" fill="var(--y)" stroke="var(--ink)" stroke-width="2"/>
+<line id="cx" y1="${T}" y2="${H-B}" stroke="var(--ink)" stroke-dasharray="3 3" style="display:none"/><rect id="ov" x="${L}" y="0" width="${W-L-R}" height="${H}" fill="transparent"/></svg>`}
+let last='';
+function updOverview(){const r=calc(),c=cnt(r),H=c.HIGH,M=c.MEDIUM;
+$('#hl').textContent=H?`In this simulation, ${H} of ${r.length} products ${H==1?'runs':'run'} out before the next delivery.`:'In this simulation, no product runs out before the next delivery.';
+$('#sub').textContent=`${M} more ${M==1?'is':'are'} below their reorder point, and ${c.LOW} ${c.LOW==1?'has':'have'} enough stock. Move a slider and the shelf refills.`;
+document.querySelectorAll('.bin').forEach((b,i)=>{const x=r[i],f=Math.max(x.forecast_weekly,1e-9),k=v=>Math.min(100,v/f/6*100)+'%';
+b.className='bin '+x.risk_level;b.style.setProperty('--h',k(x.on_hand));b.style.setProperty('--lt',k(x.forecast_lead_time));b.style.setProperty('--rp',k(x.reorder_point));
+b.title=`${x.product_id} ${x.description}: ${n1(x.on_hand/f)} weeks of stock, ${x.risk_level} risk`})}
+function go(){const h=location.hash.slice(1),t=V[h]?h:'overview';
+$('#nav').innerHTML=[['overview','Shelf'],['explorer','Product forecast'],['risk','Risk table'],['models','Model performance'],['sensitivity','Sensitivity']].map(([k,n])=>`<a href="#${k}"${k==t?' class="on" aria-current="page"':''}>${n}</a>`).join('');
+$('#view').innerHTML=V[t]();
+if(t=='overview'){const w=$('#wall');requestAnimationFrame(()=>requestAnimationFrame(()=>{updOverview();setTimeout(()=>w.classList.add('live'),last?0:1800)}));if(last)w.classList.add('live');
+w.onclick=e=>{const b=e.target.closest('.bin');if(b){S.sel=+b.dataset.i;location.hash='#explorer'}}}
+if(t=='explorer'){$('#sel').onchange=e=>{S.sel=+e.target.value;go()};const sv=$('#svg'),tip=$('#tip'),cx=$('#cx'),p=D.P[S.sel],W=760,L=46,R=14;
+$('#ov').onmousemove=e=>{const bb=sv.getBoundingClientRect(),px=(e.clientX-bb.left)/bb.width*W,i=Math.max(0,Math.min(N,Math.round((px-L)/((W-L-R)/N)))),x=L+i*(W-L-R)/N;
+cx.setAttribute('x1',x);cx.setAttribute('x2',x);cx.style.display='block';tip.style.display='block';tip.style.left=Math.min(x/W*bb.width+8,bb.width-190)+'px';
+tip.textContent=i==N?`${fmt(i)}: forecast ${n0(p.fc)} units`:`${fmt(i)}: actual ${n0(p.u[i])}, baseline ${n0(p.pred[i])}`};
+$('#ov').onmouseleave=()=>{cx.style.display='none';tip.style.display='none'}}
+if(t=='risk'){document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{S.f=b.dataset.f;go()});
+document.querySelectorAll('th[data-k]').forEach(h=>h.onclick=()=>{const k=h.dataset.k;S.dir=S.sort==k?-S.dir:1;S.sort=k;go()});
+document.querySelectorAll('tbody tr').forEach(tr=>tr.onclick=()=>{S.sel=D.P.findIndex(p=>p.id==tr.dataset.id);location.hash='#explorer'});
+$('#csv').onclick=()=>{const r=calc(),ks=Object.keys(r[0]),s=[ks.join(',')].concat(r.map(x=>ks.map(k=>JSON.stringify(x[k])).join(','))).join('\n'),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv'}));a.download='risk_table.csv';a.click()}}
+last=t}
+function lab(){$('#oL').textContent=S.L+(S.L>1?' weeks':' week');$('#osl').textContent=Math.round(S.sl*100)+'%';$('#oisw').textContent=S.isw+' weeks'}
+function upd(){lab();if(!location.hash.slice(1)||location.hash.slice(1)=='overview')updOverview();else go()}
+[['L',1],['sl',100],['isw',1]].forEach(([id,d])=>$('#'+id).oninput=e=>{S[id]=+e.target.value/d;upd()});
+$('#rs').onclick=()=>{Object.assign(S,S0);$('#L').value=1;$('#sl').value=95;$('#isw').value=3;upd()};
+$('#th').onclick=()=>{const r=document.documentElement,d=matchMedia('(prefers-color-scheme:dark)').matches,c=r.dataset.theme||(d?'dark':'light');r.dataset.theme=c=='dark'?'light':'dark'};
+addEventListener('hashchange',go);
+lab();go();
+</script></body></html>
