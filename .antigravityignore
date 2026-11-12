@@ -1,8 +1,26 @@
+# Virtual environments
+venv/
+.venv/
+
+# Raw data and large spreadsheets
 data/raw/
 *.xlsx
-*.parquet
-models/*.joblib
+
+# Python caches and local environment configs
 __pycache__/
-.venv/
+.pytest_cache/
+.env
 node_modules/
 
+# Ignore parquets and joblib models globally by default
+*.parquet
+models/*.joblib
+
+# Explicitly track small processed datasets, models, and figures
+!data/processed/*.parquet
+!data/processed/*.csv
+!data/mock/*.parquet
+!models/
+!models/best_model.joblib
+!reports/figures/
+!reports/figures/*
