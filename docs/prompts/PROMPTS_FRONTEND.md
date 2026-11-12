@@ -114,6 +114,7 @@ Acceptance: bin count equals the product count; each bin's class equals risk_lev
 **SRS:** FR-U-8 | **Output:** `views.explorer`, `js/charts.js`
 
 ```
+  The closure week 2010-12-27 has no row in weekly_demand. In /forecast history, include it as an entry with units null (so the history has 52 weeks) and draw the chart line with a gap there. Smoke tests expect 52 history entries and one null.
 Create dashboard/js/charts.js with hand-built SVG helpers (no chart library): lineChart({series, xTicks, yTicks, bands, markers}), bars(values, labels), and a tooltip helper. Then implement #explorer:
 
 - a product <select> (code: description; ordered like the shelf) and a risk badge (icon, colour and text) from getRisk()

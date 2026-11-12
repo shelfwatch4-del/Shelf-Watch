@@ -18,7 +18,7 @@
 | `customers` | int | Number of distinct non-null CustomerIDs that week |
 | `avg_price` | float | Mean UnitPrice that week. Forward-filled in zero-demand weeks |
 
-Rules: one row per product per week; only the Top 100 products; only full weeks; zero-demand weeks included between a product's first and last active week; sorted by `product_id, week_start`.
+Rules: one row per product per week; only the Top 100 products; only full weeks; zero-demand weeks included from each product's first active week through the last full week (`2011-11-28`), excluding shop-closed weeks in `closed_weeks.csv`; sorted by `product_id, week_start`.
 
 
 ### C1b. `data/processed/closed_weeks.csv` (companion to C1)

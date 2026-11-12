@@ -9,9 +9,9 @@
 ## 1. Delivered Files & Schemas
 
 ### 1.1 `data/processed/weekly_demand.parquet` (Contract C1)
-- **Dimensions:** `5,147` rows × `7` columns
-- **Scope:** `100` Top-N products (selected on training period only, `>= 30` active training weeks) across `52` full Monday-start weeks (`2010-12-06` through `2011-11-28`)
-- **Ordering & Grid:** Sorted by `product_id, week_start`; gapless Monday ranges between each product's first and last active week; zero-demand weeks filled with `units = orders = customers = 0` and forward-filled `avg_price`
+- **Dimensions:** `5,067` rows × `7` columns
+- **Scope:** `100` Top-N products (selected on training period only, `>= 30` active training weeks) across `51` open Monday-start weeks (`2010-12-06` through `2011-11-28`, excluding closed week `2010-12-27`)
+- **Ordering & Grid:** Sorted by `product_id, week_start`; gapless Monday ranges (excluding `closed_weeks.csv`) from each product's first active week through the last full week (`2011-11-28`); zero-demand weeks filled with `units = orders = customers = 0` and forward-filled `avg_price` (two discontinued/tail-inactive SKUs, `21829` after `2011-10-17` and `22740` after `2011-09-26`, are zero-filled through `2011-11-28`)
 
 | Column | Dtype | Constraints / Notes |
 | --- | --- | --- |
@@ -52,7 +52,7 @@
 > **Week `2010-12-27` is MISSING DATA, NOT zero demand.**
 
 - The shop recorded zero transactions across all products during the Christmas/New Year closure week (`2010-12-27`).
-- It remains in `weekly_demand.parquet` with `units = 0` solely so the Monday calendar grid is regular.
+- It is excluded from `weekly_demand.parquet` (missing, not zero demand) and listed in `data/processed/closed_weeks.csv`.
 - **Required handling in `src/features.py` & `src/train.py`:**
   1. Never include `2010-12-27` as a training target row.
   2. Mask `2010-12-27` as `NaN` before computing lags and rolling statistics so the shutdown never leaks as `0` demand into subsequent weeks' features.
@@ -85,13 +85,13 @@
 | `cap Quantity (train)` | `500,386` |
 | `keep top-100 products` | `76,648` |
 
-*(Aggregating the `76,648` Top-100 lines to `product_id × week_start` and filling internal gaps yields `5,147` rows.)*
+*(Aggregating the `76,648` Top-100 lines to `product_id × week_start`, filling open weeks from first active week through `2011-11-28`, and excluding `2010-12-27` yields `5,067` rows.)*
 
 ---
 
 ## 5. Three Known Data Quirks to Remember
 
-1. **Intermittent demand:** `3.98%` (`205 / 5,147`) of all rows have `units == 0` (`2.18%` excluding the `2010-12-27` closure); `23` of `100` products have at least one zero open week (up to `25.5%`), and per-product CV averages `0.731` (up to `1.501`). **Never use `MAPE`** — report `MAE`, `RMSE`, `WAPE`, and `bias`.
+1. **Intermittent demand:** `2.47%` (`125 / 5,067`) of open rows have `units == 0` (the `2010-12-27` closure is excluded); `23` of `100` products have at least one zero open week (up to `35.3%`, including discontinued SKUs `21829` after `2011-10-17` and `22740` after `2011-09-26`), and per-product CV averages `0.734` (up to `1.501`). **Never use `MAPE`** — report `MAE`, `RMSE`, `WAPE`, and `bias`.
 2. **Level shift in October–November:** Total demand across the Top 100 products averages `29,515.6` units/week in the 8-week test period versus `25,000.7` units/week in open training weeks (`+18.1%` / `1.18x`). Because tree models cannot extrapolate above training ranges, check test-period under-forecasting (`bias`) closely and compare against Ridge regression.
 3. **Bulk wholesale orders:** Extreme single lines (`80,995` and `74,215` units raw) were capped at `480.0` units, but multi-line wholesale orders still create strong right-skew (weekly `units` median `184.0`, mean `254.7`, max `2,755`). Expect isolated spike errors and wide `sigma_error` on wholesale-heavy SKUs.
 

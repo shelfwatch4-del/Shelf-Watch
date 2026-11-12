@@ -74,10 +74,22 @@ def test_contract_c1_weekly_demand(env_name: str, data_dir: Path) -> None:
     sorted_df = df.sort_values(["product_id", "week_start"]).reset_index(drop=True)
     assert df.reset_index(drop=True).equals(sorted_df), "Rows must be sorted by product_id, week_start"
 
+    closed_path = data_dir / "closed_weeks.csv"
+    closed_set: set[pd.Timestamp] = set()
+    if closed_path.exists():
+        closed_df = pd.read_csv(closed_path, dtype={"week_start": str})
+        closed_set = set(pd.to_datetime(closed_df["week_start"]).dt.normalize())
+
+    end_week = weeks.max().normalize()
     for product_id, group in df.groupby("product_id", sort=False):
-        prod_weeks = pd.to_datetime(group["week_start"]).sort_values()
-        expected = pd.date_range(prod_weeks.min(), prod_weeks.max(), freq="W-MON")
-        assert list(prod_weeks) == list(expected), f"Gap found in {product_id} week range"
+        prod_weeks = pd.to_datetime(group["week_start"]).dt.normalize().sort_values()
+        if closed_set:
+            assert not prod_weeks.isin(closed_set).any(), f"Closed week filled for {product_id}"
+        expected = [
+            w for w in pd.date_range(prod_weeks.min(), end_week, freq="W-MON")
+            if w not in closed_set
+        ]
+        assert list(prod_weeks) == expected, f"Gap or early end in {product_id} week range"
 
     n_products = df["product_id"].nunique()
     if env_name == "mock":

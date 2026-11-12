@@ -290,12 +290,16 @@ _C1_COLUMNS: list[str] = [
 ]
 
 
-def validate_c1(df: pd.DataFrame) -> None:
+def validate_c1(
+    df: pd.DataFrame,
+    last_full_week: str | pd.Timestamp | None = None,
+    closed_weeks: pd.DatetimeIndex | pd.Series | list[Any] | None = None,
+) -> None:
     """Raise ``AssertionError`` if *df* violates any contract C1 rule.
 
     Checks column order, types, value constraints, Monday-only ``week_start``,
-    no duplicate product-week rows, correct sort order, and gapless per-product
-    week ranges.
+    no duplicate product-week rows, correct sort order, exclusion of closed
+    weeks, and gapless per-product week ranges ending at *last_full_week*.
     """
     assert list(df.columns) == _C1_COLUMNS, (
         f"Column mismatch: {list(df.columns)} != {_C1_COLUMNS}"
@@ -329,11 +333,29 @@ def validate_c1(df: pd.DataFrame) -> None:
         "Rows must be sorted by product_id, week_start"
     )
 
+    end_week = (
+        pd.Timestamp(last_full_week).normalize()
+        if last_full_week is not None
+        else pd.Timestamp(weeks.max()).normalize()
+    )
+    if closed_weeks is not None:
+        closed_set = {pd.Timestamp(w).normalize() for w in pd.to_datetime(list(closed_weeks))}
+    else:
+        all_grid = pd.date_range(weeks.min(), weeks.max(), freq="W-MON")
+        present_weeks = set(weeks.dt.normalize())
+        closed_set = {w for w in all_grid if w not in present_weeks}
+
     for pid, group in df.groupby("product_id", sort=False):
-        prod_weeks = pd.to_datetime(group["week_start"]).sort_values()
-        expected = pd.date_range(prod_weeks.min(), prod_weeks.max(), freq="W-MON")
+        prod_weeks = pd.to_datetime(group["week_start"]).dt.normalize().sort_values()
+        if closed_set:
+            assert not prod_weeks.isin(closed_set).any(), (
+                f"Closed week must not be filled for product '{pid}'"
+            )
+        expected = pd.DatetimeIndex(
+            [w for w in pd.date_range(prod_weeks.min(), end_week, freq="W-MON") if w not in closed_set]
+        )
         assert list(prod_weeks) == list(expected), (
-            f"Gap in week range for product '{pid}'"
+            f"Gap or early end in week range for product '{pid}' (expected end {end_week.date()})"
         )
 
 
@@ -342,14 +364,29 @@ def validate_c1(df: pd.DataFrame) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _fill_product_weeks(group: pd.DataFrame) -> pd.DataFrame:
-    """Reindex a single-product aggregated group to its full Monday range.
+def _fill_product_weeks(
+    group: pd.DataFrame,
+    end_week: pd.Timestamp | None = None,
+    closed_weeks: pd.DatetimeIndex | set[pd.Timestamp] | None = None,
+) -> pd.DataFrame:
+    """Reindex a single-product aggregated group from its first active week to *end_week*.
 
-    Fills gaps with units/orders/customers = 0 and forward-fills avg_price.
+    Excludes *closed_weeks* (kept missing, never filled as 0), fills open gaps
+    with units/orders/customers = 0, and forward-fills avg_price.
     """
-    full_range = pd.date_range(
-        group["week_start"].min(), group["week_start"].max(), freq="W-MON"
+    target_end = (
+        pd.Timestamp(end_week).normalize()
+        if end_week is not None
+        else pd.Timestamp(group["week_start"].max()).normalize()
     )
+    closed_set = (
+        {pd.Timestamp(w).normalize() for w in closed_weeks}
+        if closed_weeks is not None
+        else set()
+    )
+    full_range = pd.date_range(group["week_start"].min(), target_end, freq="W-MON")
+    if closed_set:
+        full_range = pd.DatetimeIndex([w for w in full_range if w not in closed_set])
     g = group.set_index("week_start").reindex(full_range)
     g.index.name = "week_start"
 
@@ -486,10 +523,14 @@ def build_weekly_demand(
     # Merge description
     agg = agg.merge(desc_df, on="product_id", how="left")
 
-    # --- Step 13: fill missing weeks per product ---
+    # --- Step 13: fill missing weeks per product through last full week ---
+    end_week = pd.Timestamp(weeks.max()).normalize()
+    closed_set = {pd.Timestamp(w).normalize() for w in closed}
     filled_parts: list[pd.DataFrame] = []
     for pid, group in agg.groupby("product_id", sort=False):
-        filled_parts.append(_fill_product_weeks(group))
+        filled_parts.append(
+            _fill_product_weeks(group, end_week=end_week, closed_weeks=closed_set)
+        )
 
     result = pd.concat(filled_parts, ignore_index=True)
 
@@ -504,7 +545,7 @@ def build_weekly_demand(
     result = result.sort_values(["product_id", "week_start"]).reset_index(drop=True)
 
     # --- Step 15: validate & save ---
-    validate_c1(result)
+    validate_c1(result, last_full_week=end_week, closed_weeks=closed)
     result.to_parquet(out_path, index=False)
     log.to_csv(log_path, index=False)
 

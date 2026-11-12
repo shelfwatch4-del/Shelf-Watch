@@ -38,7 +38,7 @@ From `data/processed/cleaning_log.csv` and `src/data_prep.py`:
 | `cap Quantity (train)` | `0` (values clipped) | `500,386` |
 | `keep top-100 products` | `423,738` | `76,648` |
 
-- **Post-aggregation table (`data/processed/weekly_demand.parquet`):** Aggregating the `76,648` transaction lines to `(product_id, week_start)` and filling internal gaps yields **`5,147` rows** covering **`100` products** across **`52` full Monday-start weeks** (`2010-12-06` to `2011-11-28`).
+- **Post-aggregation table (`data/processed/weekly_demand.parquet`):** Aggregating the `76,648` transaction lines to `(product_id, week_start)`, zero-filling from each product's first active week through `2011-11-28`, and excluding closed week `2010-12-27` yields **`5,067` rows** covering **`100` products** across **`51` open Monday-start weeks** (`2010-12-06` to `2011-11-28`). Two Top-100 products stopped selling before `2011-11-28` (`21829` last active `2011-10-17`, `22740` last active `2011-09-26`) and are zero-filled through `2011-11-28`.
 
 ---
 
@@ -46,7 +46,7 @@ From `data/processed/cleaning_log.csv` and `src/data_prep.py`:
 
 - **Why weekly instead of daily:** Daily SKU-level sales in gift retail are heavily sparse (zero-inflated, with no Saturday trading and intermittent weekday orders), whereas aggregating to Monday-start weeks (`week_start`) pools multi-day noise into a clean signal aligned with weekly replenishment decisions.
 - **Aggregation rules:** For each `(product_id, week_start)`, `units = sum(Quantity)`, `orders = nunique(InvoiceNo)`, `customers = nunique(CustomerID)` (ignoring `NaN`), and `avg_price = mean(UnitPrice)`.
-- **Gap filling & density:** Missing weeks strictly between each product's first and last active week are filled with `units = orders = customers = 0` and forward-filled `avg_price`. Across the resulting `5,147` rows, weekly `units` has mean `254.7`, median `184.0`, std `243.8`, IQR `100`–`332`, and max `2,755`, with `205` zero rows (`3.98%` overall; `110` rows / `2.18%` excluding the closure week).
+- **Gap filling & density:** Missing open weeks from each product's first active week through the last full week (`2011-11-28`), excluding `2010-12-27`, are filled with `units = orders = customers = 0` and forward-filled `avg_price`. Across the resulting `5,067` rows, `125` rows (`2.47%`) have `units == 0`.
 
 ---
 
@@ -68,7 +68,7 @@ From `data/processed/cleaning_log.csv` and `src/data_prep.py`:
 ## 7. The Closure Week
 
 - **Detected closure (`data/processed/closed_weeks.csv`):** The full week starting **`2010-12-27`** recorded **`0` transactions** across the entire shop (Christmas/New Year shutdown).
-- **Handling rule:** Week `2010-12-27` stays in `weekly_demand.parquet` with `units = 0` solely to preserve a continuous Monday index, and downstream feature/training pipelines must treat it as **missing data (`NaN`), never zero demand**—excluding it from training targets, lag/rolling calculations, and `avg_weekly_units_train`.
+- **Handling rule:** Week `2010-12-27` is excluded from `weekly_demand.parquet` (missing data, never zero demand), and downstream feature/training pipelines skip over it for lags, rolling calculations, and `avg_weekly_units_train`.
 
 ---
 
@@ -76,7 +76,7 @@ From `data/processed/cleaning_log.csv` and `src/data_prep.py`:
 
 - **Single year of history:** With only `52` full weeks (`2010-12-06` to `2011-11-28`), multi-year seasonality cannot be learned, and calendar variables (`week_of_year`, `weeks_to_christmas`) behave nearly like a linear time index and must be tested by ablation (`TODO`: ablation WAPE delta once Member 2 runs `src/train.py`).
 - **October–November level shift:** Total weekly demand across the Top `100` SKUs averages `29,515.6` units/week in the `8`-week test period compared to `25,000.7` units/week in open training weeks (`+18.1%` / `1.18x`), which poses an extrapolation risk for tree-based models (`TODO`: test-period model bias once Member 2 delivers `metrics.csv` and `predictions.csv`).
-- **Intermittent demand & volatility:** `23` of `100` selected products still have zero-demand open weeks (up to `25.5%`), and per-product CV averages `0.731` (range `0.415`–`1.501`), preventing the use of `MAPE`.
+- **Intermittent demand & volatility:** `23` of `100` selected products have zero-demand open weeks (up to `35.3%`, including discontinued SKUs `21829` after `2011-10-17` and `22740` after `2011-09-26`), and per-product CV averages `0.734` (range `0.415`–`1.501`), preventing the use of `MAPE`.
 - **Bulk wholesale orders:** Even after capping individual lines at `480.0` units, multi-line wholesale orders produce sharp weekly demand spikes (up to `2,755` units/week).
 - **No real inventory records:** The UCI dataset logs sales only, not stock-on-hand or supplier deliveries, so downstream stockout risk figures rely on simulated starting stock (`TODO`: final risk counts once Member 3 runs `src/risk_engine.py` on real forecasts).
 
@@ -85,7 +85,7 @@ From `data/processed/cleaning_log.csv` and `src/data_prep.py`:
 ## 9. Likely Viva Questions & Model Answers
 
 1. **Why did you aggregate transactions to weekly rather than daily demand?**  
-   Daily SKU-level sales in this dataset are sparse and include zero-trading days such as Saturdays, making next-day forecasts noisy and zero-inflated. Aggregating to Monday-start weeks produces `5,147` clean observations across `52` full weeks with only `2.18%` open-week zeros, matching a realistic weekly inventory review cycle.
+   Daily SKU-level sales in this dataset are sparse and include zero-trading days such as Saturdays, making next-day forecasts noisy and zero-inflated. Aggregating to Monday-start weeks produces `5,067` clean observations across `51` open weeks with only `2.47%` open-week zeros, matching a realistic weekly inventory review cycle.
 
 2. **Why did you keep rows with missing `CustomerID` (~`24.9%` of lines)?**  
    Our forecasting target is total weekly units sold per SKU (`StockCode`), which does not require identifying individual buyers. Dropping guest checkouts would systematically understate true product demand by roughly a quarter.

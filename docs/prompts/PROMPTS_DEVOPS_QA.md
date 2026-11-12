@@ -58,6 +58,8 @@ Also create a pull request template (.github/pull_request_template.md) with chec
 **SRS:** section 10.1 (system test) | **Output:** `scripts/smoke.py`
 
 ```
+  The closure week 2010-12-27 has no row in weekly_demand. In /forecast history, include it as an entry with units null (so the history has 52 weeks) and draw the chart line with a gap there. Smoke tests expect 52 history entries and one null.
+
 Write scripts/smoke.py that takes a base URL (default http://localhost:8000) and checks: GET /health is ok; GET /disclaimer text contains "simulated"; GET /products returns 100 items ordered by total_units descending; GET /forecast/{first_product_id} returns 52 history rows, 8 test predictions and a forecast for 2011-12-05; GET /forecast/NOPE returns 404; POST /risk with defaults returns summary counts that add up to 100; POST /risk with lead_time_weeks 9 returns 422; POST /sensitivity returns 12 rows; GET /metrics includes a baseline; GET /error-analysis has segments, weeks and products; GET / returns HTML containing "Shelfwatch"; no response contains "CustomerID". Print a table of checks with PASS or FAIL and exit non-zero on any failure. It must work against a local server and a public URL.
 ```
 **Done when:** all checks PASS locally.

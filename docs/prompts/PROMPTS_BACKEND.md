@@ -114,6 +114,7 @@ A helper clean(obj) must convert NaN, inf and numpy types to JSON-safe values (N
 **SRS:** 7.1
 
 ```
+  The closure week 2010-12-27 has no row in weekly_demand. In /forecast history, include it as an entry with units null (so the history has 52 weeks) and draw the chart line with a gap there. Smoke tests expect 52 history entries and one null.
 Add to api/main.py:
 
 GET /products -> list of {product_id, description, total_units} ordered by total_units descending, where total_units is the product's total over the TRAINING period only (weeks before 2011-10-10). This adds total_units to CONTRACTS.md C7: record it in CHANGE_REQUESTS.md with the reason (the dashboard orders bins by volume) and do not edit CONTRACTS.md.

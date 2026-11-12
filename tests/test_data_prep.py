@@ -366,15 +366,21 @@ def test_pipeline_synthetic_c1_schema_and_invariants(tmp_path: Path) -> None:
     assert (df["units"] >= 0).all()
     assert (df["units"] == 0).any(), "Expected filled zero-demand weeks"
 
-    # No gaps inside each product's range
-    for _, group in df.groupby("product_id", sort=False):
-        prod_weeks = pd.to_datetime(group["week_start"]).sort_values()
-        expected = pd.date_range(prod_weeks.min(), prod_weeks.max(), freq="W-MON")
-        assert list(prod_weeks) == list(expected)
-
-    # Closed week 2010-12-27 detected in synthetic data
+    # Closed week 2010-12-27 detected in synthetic data and excluded from weekly_demand
     closed = pd.read_csv(closed_csv)
     assert "2010-12-27" in closed["week_start"].tolist()
+    closed_set = set(pd.to_datetime(closed["week_start"]).dt.normalize())
+    assert not weeks.dt.normalize().isin(closed_set).any()
+
+    # No gaps inside each product's range, ending at last full week, excluding closed weeks
+    end_week = weeks.max().normalize()
+    for _, group in df.groupby("product_id", sort=False):
+        prod_weeks = pd.to_datetime(group["week_start"]).dt.normalize().sort_values()
+        expected = [
+            w for w in pd.date_range(prod_weeks.min(), end_week, freq="W-MON")
+            if w not in closed_set
+        ]
+        assert list(prod_weeks) == expected
 
 
 def test_pipeline_synthetic_junk_removed_and_outlier_capped(tmp_path: Path) -> None:
@@ -462,13 +468,15 @@ def test_validate_c1_raises_on_contract_violations() -> None:
     """validate_c1 raises AssertionError for every C1 contract violation."""
     valid = pd.DataFrame(
         {
-            "product_id": ["P1", "P1", "P2"],
-            "description": ["ITEM 1", "ITEM 1", "ITEM 2"],
-            "week_start": pd.to_datetime(["2011-01-03", "2011-01-10", "2011-01-03"]),
-            "units": [10, 0, 5],
-            "orders": [2, 0, 1],
-            "customers": [2, 0, 1],
-            "avg_price": [2.5, 2.5, 3.0],
+            "product_id": ["P1", "P1", "P2", "P2"],
+            "description": ["ITEM 1", "ITEM 1", "ITEM 2", "ITEM 2"],
+            "week_start": pd.to_datetime(
+                ["2011-01-03", "2011-01-10", "2011-01-03", "2011-01-10"]
+            ),
+            "units": [10, 0, 5, 0],
+            "orders": [2, 0, 1, 0],
+            "customers": [2, 0, 1, 0],
+            "avg_price": [2.5, 2.5, 3.0, 3.0],
         }
     )
     validate_c1(valid)
@@ -513,6 +521,81 @@ def test_validate_c1_raises_on_contract_violations() -> None:
         validate_c1(gapped)
 
     # 8. Unsorted rows
-    unsorted = valid.iloc[[2, 0, 1]].reset_index(drop=True)
+    unsorted = valid.iloc[[2, 0, 1, 3]].reset_index(drop=True)
     with pytest.raises(AssertionError):
         validate_c1(unsorted)
+
+    # 9. Product ends early (before last_full_week)
+    ended_early = valid.iloc[[0, 1, 2]].reset_index(drop=True)
+    with pytest.raises(AssertionError):
+        validate_c1(ended_early)
+    with pytest.raises(AssertionError):
+        validate_c1(valid, last_full_week="2011-01-17")
+
+    # 10. Closure week filled
+    with pytest.raises(AssertionError):
+        validate_c1(valid, closed_weeks=["2011-01-10"])
+
+
+def test_fill_extends_through_last_full_week_and_skips_closure(tmp_path: Path) -> None:
+    """Verify tail zero-fill through last full week, no pre-first-sale rows, and closure excluded."""
+    # 14 full Mon-Sun weeks: 2011-01-03 .. 2011-04-04 (test_weeks=8 -> test starts 2011-02-14).
+    # 2011-01-17 is closed (no sales for any product).
+    # P100 starts 2011-01-03, stops selling 2011-01-31 (before test period).
+    # P200 starts 2011-01-24 (after closure) and sells through 2011-04-10 (end of week 2011-04-04).
+    rows = [
+        ("1001", "P100", "EARLY", 10, "2011-01-03 10:00:00", 2.0, 101.0),
+        ("1002", "P100", "EARLY", 12, "2011-01-10 10:00:00", 2.0, 101.0),
+        ("1003", "P100", "EARLY", 15, "2011-01-31 10:00:00", 2.5, 101.0),
+        ("1004", "P200", "LATE", 20, "2011-01-24 10:00:00", 4.0, 102.0),
+        ("1005", "P200", "LATE", 25, "2011-02-07 10:00:00", 4.0, 102.0),
+    ]
+    for i, w_str in enumerate(pd.date_range("2011-02-14", "2011-04-04", freq="W-MON")):
+        rows.append((str(2000 + i), "P200", "LATE", 30, f"{w_str.date()} 10:00:00", 4.5, 102.0))
+    rows.append(("2099", "P200", "LATE", 5, "2011-04-10 17:00:00", 4.5, 102.0))
+    raw = pd.DataFrame(
+        rows,
+        columns=[
+            "InvoiceNo",
+            "StockCode",
+            "Description",
+            "Quantity",
+            "InvoiceDate",
+            "UnitPrice",
+            "CustomerID",
+        ],
+    )
+    raw["InvoiceDate"] = pd.to_datetime(raw["InvoiceDate"])
+    raw["Country"] = "United Kingdom"
+
+    raw_parquet = tmp_path / "fill_test.parquet"
+    raw.to_parquet(raw_parquet, index=False)
+
+    out_df = build_weekly_demand(
+        raw_path=raw_parquet,
+        out_path=tmp_path / "out.parquet",
+        log_path=tmp_path / "log.csv",
+        closed_weeks_path=tmp_path / "closed.csv",
+        top_n=2,
+        test_weeks=8,
+        min_active_train_weeks=1,
+    )
+
+    # (c) Closure week 2011-01-17 is never filled
+    assert pd.Timestamp("2011-01-17") not in set(out_df["week_start"])
+
+    # (a) P100 has all 8 test-period rows with units == 0 and forward-filled avg_price == 2.5
+    early_test = out_df[
+        (out_df["product_id"] == "P100")
+        & (out_df["week_start"] >= pd.Timestamp("2011-02-14"))
+    ]
+    assert len(early_test) == 8
+    assert (early_test["units"] == 0).all()
+    assert (early_test["orders"] == 0).all()
+    assert (early_test["customers"] == 0).all()
+    assert (early_test["avg_price"] == 2.5).all()
+
+    # (b) P200 has no rows before its first sale (2011-01-24)
+    late_rows = out_df[out_df["product_id"] == "P200"]
+    assert late_rows["week_start"].min() == pd.Timestamp("2011-01-24")
+    assert late_rows["week_start"].max() == pd.Timestamp("2011-04-04")

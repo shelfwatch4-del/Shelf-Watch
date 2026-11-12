@@ -43,9 +43,9 @@ Estimate product demand from historical sales records and identify products that
 3. Remove non-product `StockCode` values: `POST, D, M, DOT, BANK CHARGES, AMAZONFEE, S, B, CRUK, PADS` and any code with no digits
 4. Keep rows with missing `CustomerID` (not needed for product demand)
 5. Outliers: cap line-level `Quantity` at the 99.9th percentile. Document the cap value in the report
-6. Fill missing weeks with `units = 0` between each product's first and last active week
+6. Fill missing weeks with `units = 0` from each product's first active week through the last full week (`2011-11-28`), excluding shop-closed weeks (not before a product's first active week)
 7. Drop partial weeks (see section 4)
-8. **Shop-closed weeks:** the week of 2010-12-27 has zero sales for every product (Christmas/New Year shutdown). It stays in the table as `units = 0` to keep the weekly grid regular, but it is listed in `data/processed/closed_weeks.csv`. Member 2 must treat it as **missing, not zero demand**: no training row with it as the target, and lags/rolling stats must skip it (or mask it)
+8. **Shop-closed weeks:** the week of 2010-12-27 has zero sales for every product (Christmas/New Year shutdown). It is listed in `data/processed/closed_weeks.csv` and excluded from `weekly_demand.parquet` (missing, not zero demand): no training row with it as the target, and lags/rolling stats skip over it
 
 ## 6. Feature rules (Member 2 implements)
 - Target at week t uses only information from weeks **before t**
