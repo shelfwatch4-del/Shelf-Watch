@@ -351,6 +351,28 @@ def load_application_data(base_dir: Optional[Path] = None) -> AppDataStore:
 # Lifespan Handler
 # -----------------------------------------------------------------------------
 
+def _sync_product_catalog(products: List[Dict[str, Any]]) -> None:
+    """Insert any catalog products missing from the DB so FK-backed writes work."""
+    from api.models import Product
+
+    session = SessionLocal()
+    try:
+        existing = {pid for (pid,) in session.query(Product.product_id).all()}
+        for rank, p in enumerate(products[:100], start=1):
+            if p["product_id"] not in existing:
+                session.add(
+                    Product(
+                        product_id=p["product_id"],
+                        description=p.get("description"),
+                        total_units_train=p.get("total_units"),
+                        rank_train=rank,
+                    )
+                )
+        session.commit()
+    finally:
+        session.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -366,9 +388,11 @@ async def lifespan(app: FastAPI):
     # Load project datasets and models
     loaded_store = load_application_data()
     # Populate global container and app.state
-    global data_store
-    data_store = loaded_store
-    app.state.data = loaded_store
+    # Mutate the existing singleton in place (do not rebind) so that modules which
+    # did `from api.main import data_store` see the loaded data.
+    data_store.__dict__.update(loaded_store.__dict__)
+    _sync_product_catalog(data_store.products)
+    app.state.data = data_store
     app.state.lifecycle = loaded_store.lifecycle
 
     yield
@@ -1086,7 +1110,18 @@ def put_inventory(
     Clears the risk cache after every write (FR-DB-6).
     """
     try:
-        record, created = upsert_stock(db, product_id, payload)
+        on_hand = payload.on_hand
+        if float(on_hand).is_integer():
+            on_hand = int(on_hand)  # schema parses as float; CRUD requires a whole int
+        record, created = upsert_stock(
+            db,
+            product_id,
+            {
+                "on_hand": on_hand,
+                "lead_time_weeks": payload.lead_time_weeks,
+                "service_level": payload.service_level,
+            },
+        )
     except NotFound as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValidationError as exc:
