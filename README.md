@@ -114,6 +114,25 @@ python scripts/bench_api.py        # latency: median and p95 over 50 calls per e
 
 See [docs/API_CLIENT_EXPLAINED.md](docs/API_CLIENT_EXPLAINED.md) for how the client works.
 
+## Deploy
+
+Local server plus ngrok, as the mentor prescribed. Full detail and troubleshooting: [docs/DEPLOY_LOCAL_NGROK.md](docs/DEPLOY_LOCAL_NGROK.md). Run every command from the project root `C:\ShelfWatch`.
+
+1. Start the MySQL 8 service (Windows Services, `MySQL80`, Running).
+2. Check `.env` has `DATABASE_URL` (MySQL) and your own `API_KEY`. The data must already be loaded with `venv\Scripts\python.exe scripts\load_mysql.py`.
+3. Start the API in terminal 1: `scripts\start_server.bat`. It listens on `127.0.0.1:8000` only and does not print the key. Leave the window open.
+4. Check everything from terminal 2: `venv\Scripts\python.exe scripts\doctor.py`. It must end with "All checks passed." (exit code 0).
+5. Open `http://127.0.0.1:8000/` (landing page) and `http://127.0.0.1:8000/docs` (Swagger).
+6. Start the tunnel in terminal 3: `scripts\start_ngrok.bat` (first time only: `ngrok config add-authtoken <token>`). Copy the `https://....ngrok-free.app` address it prints.
+7. Test in Postman: import `postman/Shelfwatch.postman_collection.json` and the local environment, set `apiKey`, run the collection. Then import the public environment, set `baseUrl` to the ngrok address (no trailing slash) and `apiKey`, and run it again. Every test must pass. The collection sends `ngrok-skip-browser-warning: true` on every request.
+8. Take a backup: `scripts\backup_db.bat` writes `backups\shelfwatch_<date>_<time>.sql` (credentials are read from `.env`; the password is never printed). Copy the file to the second laptop.
+
+Things to know:
+
+- The public URL works **only while the laptop, MySQL, FastAPI and ngrok are all running** (power on, sleep off, network up).
+- The free ngrok URL **changes on restart unless you claim a static domain** in the ngrok dashboard. After a restart, update `baseUrl` in the public Postman environment and give faculty the new address.
+- Keep the latest `mysqldump` backup (`scripts\backup_db.bat`) and the project folder **on a second laptop**, so it can be restored there in minutes (`mysql -u shelf -p shelfwatch < backups\shelfwatch_<date>_<time>.sql`).
+
 ## Running Tests
 
 Run the contract schema tests (checks `data/mock/` and `data/processed/` when present):

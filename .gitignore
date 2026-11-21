@@ -24,3 +24,6 @@ models/*.joblib
 !models/best_model.joblib
 !reports/figures/
 !reports/figures/*
+
+# Database dumps (scripts/backup_db.bat)
+backups/
