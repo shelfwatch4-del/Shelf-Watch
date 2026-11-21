@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
 import threading
@@ -13,12 +14,13 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
+from api import crud_analysis, explain_service
 from api.crud_inventory import NotFound, ValidationError, delete_stock, list_stock, upsert_stock
 from api.crud_orders import (
     ConflictError,
@@ -29,8 +31,18 @@ from api.crud_orders import (
     open_order_quantities,
     update_order,
 )
+from api.crud_plans import (
+    build_lines,
+    create_draft_plan,
+    get_plan,
+    list_plans,
+    plan_order_rows,
+    rows_to_csv,
+    update_plan_status,
+)
 from api.db import SessionLocal, get_db, init_db, seed_demo_data
-from api.models import InventoryLevel, PredictionLog, PurchaseOrder, ReplenishmentPlan
+from api.middleware import register_middleware, requires_api_key
+from api.models import Base, ApiLog, InventoryLevel, PredictionLog, PurchaseOrder, ReplenishmentPlan
 from api.schemas import (
     AblationEntry,
     DisclaimerResponse,
@@ -47,6 +59,8 @@ from api.schemas import (
     OrderCreateRequest,
     OrderResponse,
     OrderUpdateRequest,
+    PlanGenerateResponse,
+    PlanUpdateRequest,
     PolicyBacktestEntry,
     PredictCustomRequest,
     PredictCustomResponse,
@@ -408,18 +422,20 @@ app = FastAPI(
     version="3.2.0",
     default_response_class=CleanJSONResponse,
     lifespan=lifespan,
+    openapi_tags=[
+        {"name": "Meta", "description": "Health, disclaimer, model metadata, metrics and audit logs."},
+        {"name": "Products", "description": "Top-100 product catalog and per-product forecast history."},
+        {"name": "Predictions", "description": "Next-week forecasts and replenishment advice."},
+        {"name": "Risk", "description": "Portfolio stockout risk, supplier-delay what-if and sensitivity sweep."},
+        {"name": "Inventory", "description": "User-entered stock records. Writes need the X-API-Key header."},
+        {"name": "Orders", "description": "Purchase orders and their status workflow. Writes need the X-API-Key header."},
+        {"name": "Intelligence", "description": "Product profiles and basket companions."},
+        {"name": "Analysis", "description": "Lineage, features, tuning, evaluation, backtest, per-product explanation and raw invoice lines (all read from MySQL)."},
+    ],
 )
 
-# Configure CORS
-cors_origins_env = os.getenv("CORS_ORIGINS", "*")
-origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins if origins else ["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS, request id/timing, audit log, API key, rate limit, 500 handler (Task B14)
+register_middleware(app)
 
 api_router = APIRouter(prefix="/api", default_response_class=CleanJSONResponse)
 
@@ -438,14 +454,17 @@ def get_health(db: Session = Depends(get_db)) -> Dict[str, Any]:
     tables: Dict[str, int] = {}
     connected = False
     try:
-        # Check connection
         db.execute(text("SELECT 1"))
         connected = True
-        # Count rows in inventory_levels
-        inv_count = db.query(InventoryLevel).count()
-        tables["inventory_levels"] = inv_count
     except Exception:
         connected = False
+    if connected:
+        # Count every mapped table; a single unreadable table must not fail health.
+        for table in Base.metadata.sorted_tables:
+            try:
+                tables[table.name] = db.query(table).count()
+            except Exception:
+                db.rollback()
 
     return {
         "status": "ok" if connected else "degraded",
@@ -688,6 +707,7 @@ def get_forecast(product_id: str) -> Dict[str, Any]:
 )
 def predict_product(
     payload: PredictRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
@@ -773,6 +793,7 @@ def predict_product(
     # 5. Log prediction to prediction_log (SRS FR-A-15)
     try:
         log_entry = PredictionLog(
+            request_id=getattr(request.state, "request_id", None),
             endpoint="/api/predict",
             product_id=pid,
             inputs=clean(payload.model_dump()),
@@ -1059,20 +1080,183 @@ def post_sensitivity(
 
 
 # -----------------------------------------------------------------------------
+# Metrics, Error Analysis, Intelligence, Logs (Task B13)
+# -----------------------------------------------------------------------------
+
+def _records(df: Optional[pd.DataFrame]) -> List[Dict[str, Any]]:
+    """DataFrame -> JSON-safe list of dicts (NaN -> None, CustomerID stripped)."""
+    if df is None or df.empty:
+        return []
+    return clean(df)
+
+
+@api_router.get("/metrics", summary="Evaluation metrics for all candidate models, val and test")
+def get_metrics() -> List[Dict[str, Any]]:
+    """CONTRACTS.md C7: bare list of {model_name, split, MAE, RMSE, WAPE, bias}."""
+    return _records(data_store.metrics)
+
+
+@api_router.get("/error-analysis", summary="Error breakdown by segment, week and product")
+def get_error_analysis() -> Dict[str, Any]:
+    df = data_store.error_analysis
+    if df is None or df.empty:
+        return {
+            "segments": [],
+            "weeks": [],
+            "products": [],
+            "note": "error_analysis.csv not found; run 'python -m src.error_analysis'.",
+        }
+    level = df["level"].astype(str)
+    return {
+        "segments": _records(df[level.isin(["segment", "abc_class", "pattern_class"])]),
+        "weeks": _records(df[level == "week"]),
+        "products": _records(df[level == "product"]),
+        "note": None,
+    }
+
+
+@api_router.get("/intelligence", summary="Product intelligence profiles for all products")
+def get_intelligence() -> List[Dict[str, Any]]:
+    return _records(data_store.product_intelligence)
+
+
+@api_router.get("/intelligence/{product_id}", summary="One product profile plus up to 3 basket companions")
+def get_intelligence_product(product_id: str) -> Dict[str, Any]:
+    pid = str(product_id).strip()
+    pi = data_store.product_intelligence
+    if pi is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    match = pi[pi["product_id"].astype(str) == pid]
+    if match.empty:
+        raise HTTPException(status_code=404, detail="Product not found")
+    companions: List[Dict[str, Any]] = []
+    bp = data_store.basket_pairs
+    if bp is not None and not bp.empty:
+        sub = bp[bp["product_id"].astype(str) == pid].sort_values(
+            ["lift", "n_invoices"], ascending=False
+        )
+        companions = _records(sub.head(3))
+    return {"profile": clean(match.iloc[0]), "companions": companions}
+
+
+@api_router.get("/logs", summary="Request audit log (api_logs), newest first")
+def get_logs(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+) -> List[Dict[str, Any]]:
+    """C7: [{id, request_id, method, path, status, duration_ms, created_at}], newest first."""
+    rows = db.query(ApiLog).order_by(ApiLog.id.desc()).offset(offset).limit(limit).all()
+    return [
+        {
+            "id": r.id,
+            "request_id": r.request_id,
+            "method": r.method,
+            "path": r.path,
+            "status": r.status,
+            "duration_ms": float(r.duration_ms) if r.duration_ms is not None else None,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
+
+
+@api_router.get("/predictions/history", summary="Saved prediction_log rows, newest first")
+def get_predictions_history(
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+) -> List[Dict[str, Any]]:
+    """C7: saved prediction_log rows, newest first."""
+    rows = db.query(PredictionLog).order_by(PredictionLog.id.desc()).limit(limit).all()
+    return [
+        {
+            "id": r.id,
+            "request_id": r.request_id,
+            "endpoint": r.endpoint,
+            "product_id": r.product_id,
+            "inputs": clean(r.inputs),
+            "outputs": clean(r.outputs),
+            "model_name": r.model_name,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
+
+
+# -----------------------------------------------------------------------------
+# Analysis, explain and transactions (Task B20, FR-U-20, FR-M-17)
+# All read from MySQL through the session; none of them opens a CSV.
+# -----------------------------------------------------------------------------
+
+def _not_found(exc: Exception) -> HTTPException:
+    return HTTPException(status_code=404, detail="Product not found")
+
+
+@api_router.get("/analysis/lineage", summary="Datasets, cleaning funnel, chronological split and overlap check")
+def get_analysis_lineage(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    return crud_analysis.get_lineage(db)
+
+
+@api_router.get("/analysis/features", summary="Feature groups, importance and ablation")
+def get_analysis_features(
+    model_name: Optional[str] = Query(None, description="Defaults to the served model"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    return crud_analysis.get_features(db, served_model=data_store.config.get("model_name"), model_name=model_name)
+
+
+@api_router.get("/analysis/tuning", summary="Hyperparameter search trials")
+def get_analysis_tuning(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    return crud_analysis.get_tuning(db)
+
+
+@api_router.get("/analysis/evaluation", summary="Metrics, error breakdowns, over/under forecast and interval coverage")
+def get_analysis_evaluation(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    return crud_analysis.get_evaluation(db, fallback_coverage=data_store.interval_coverage)
+
+
+@api_router.get("/analysis/backtest", summary="Inventory policy backtest summary and one product's weekly replay")
+def get_analysis_backtest(
+    product_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    try:
+        return crud_analysis.get_backtest(db, product_id)
+    except crud_analysis.UnknownProduct as exc:
+        raise _not_found(exc)
+
+
+@api_router.get("/explain/{product_id}", summary="Feature values and per-feature contributions for one product-week")
+def get_explain(
+    product_id: str,
+    target_week: Optional[date] = Query(None, description="Monday; defaults to the next forecast week"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    try:
+        return explain_service.build_explanation(db, data_store.config, product_id, target_week)
+    except crud_analysis.UnknownProduct as exc:
+        raise _not_found(exc)
+    except explain_service.ExplainError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@api_router.get("/data/transactions", summary="Invoice lines of one product-week (max 200, no customer fields)")
+def get_data_transactions(
+    product_id: str = Query(...),
+    week_start: date = Query(..., description="Monday of the week, YYYY-MM-DD"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    try:
+        return crud_analysis.get_transactions(db, product_id, week_start)
+    except crud_analysis.UnknownProduct as exc:
+        raise _not_found(exc)
+
+
+# -----------------------------------------------------------------------------
 # Inventory CRUD Endpoints (FR-DB-4, FR-DB-5, FR-DB-6, contract C7)
 # -----------------------------------------------------------------------------
 
-def _get_api_key() -> str:
-    """Return the configured API key (empty string if not set)."""
-    return os.getenv("API_KEY", "")
-
-
-def _require_api_key(x_api_key: Optional[str] = Header(default=None)) -> None:
-    """Dependency: reject write requests that lack the correct API key (FR-MW-4)."""
-    expected = _get_api_key()
-    if expected and x_api_key != expected:
-        raise HTTPException(status_code=401, detail="Missing or invalid X-API-Key header.")
-
+# Write endpoints are protected by ApiKeyMiddleware (api/middleware.py, FR-MW-4).
 
 @api_router.get(
     "/inventory",
@@ -1104,7 +1288,6 @@ def put_inventory(
     product_id: str,
     payload: InventoryCreateUpdateRequest,
     db: Session = Depends(get_db),
-    _auth: None = Depends(_require_api_key),
 ) -> Any:
     """Upsert stock level.  Returns 201 on create, 200 on replace.
     Clears the risk cache after every write (FR-DB-6).
@@ -1152,7 +1335,6 @@ def put_inventory(
 def delete_inventory(
     product_id: str,
     db: Session = Depends(get_db),
-    _auth: None = Depends(_require_api_key),
 ) -> None:
     """Remove a user-entered stock record.  Clears the risk cache."""
     try:
@@ -1176,7 +1358,6 @@ def delete_inventory(
 def create_purchase_order(
     payload: OrderCreateRequest,
     db: Session = Depends(get_db),
-    _auth: None = Depends(_require_api_key),
 ) -> Dict[str, Any]:
     """Create a Pending purchase order and clear the risk cache."""
     try:
@@ -1228,7 +1409,6 @@ def patch_purchase_order(
     order_id: int,
     payload: OrderUpdateRequest,
     db: Session = Depends(get_db),
-    _auth: None = Depends(_require_api_key),
 ) -> Dict[str, Any]:
     """Update status or quantity.  Receiving an order adds its qty to inventory.
     Clears the risk cache on status writes.
@@ -1257,7 +1437,6 @@ def patch_purchase_order(
 def delete_purchase_order(
     order_id: int,
     db: Session = Depends(get_db),
-    _auth: None = Depends(_require_api_key),
 ) -> None:
     """Delete an order.  Only Pending or Cancelled orders may be deleted (409 otherwise)."""
     from api.crud_orders import ConflictError
@@ -1285,6 +1464,172 @@ def _order_to_dict(order: PurchaseOrder) -> Dict[str, Any]:
     }
 
 
+# -----------------------------------------------------------------------------
+# Weekly replenishment plans (Task B19, FR-W-1 to FR-W-6)
+# -----------------------------------------------------------------------------
+
+def _plan_to_dict(plan: ReplenishmentPlan) -> Dict[str, Any]:
+    descriptions = {p["product_id"]: p.get("description") for p in data_store.products}
+    return {
+        "id": plan.id,
+        "week_start": plan.week_start.isoformat(),
+        "status": plan.status,
+        "note": plan.note,
+        "created_at": plan.created_at.isoformat() if plan.created_at else None,
+        "approved_at": plan.approved_at.isoformat() if plan.approved_at else None,
+        "orders": plan_order_rows(plan, descriptions),
+    }
+
+
+@api_router.post(
+    "/plans/generate",
+    response_model=PlanGenerateResponse,
+    status_code=201,
+    summary="Build a Draft plan from current risk results (needs X-API-Key)",
+)
+def generate_plan(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """One line per ORDER_NOW / ORDER_SOON product with a positive recommended quantity.
+    409 if a Draft plan already exists for the forecast week."""
+    forecast_df, stock_overrides, open_orders = _load_risk_inputs(db)
+    defaults = RiskRequest()
+    params: Dict[str, Any] = {
+        "lead_time_weeks": defaults.lead_time_weeks,
+        "service_level": defaults.service_level,
+        "initial_stock_weeks": defaults.initial_stock_weeks,
+    }
+    try:
+        risk_df = compute_risk(
+            forecast_df=forecast_df,
+            params=params,
+            stock_overrides=stock_overrides,
+            open_orders=open_orders,
+            lifecycle=data_store.lifecycle,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    week_start = date.fromisoformat(str(forecast_df.iloc[0].get("week_start", "2011-12-05"))[:10])
+    lines = build_lines(risk_df.to_dict(orient="records"))
+    try:
+        plan = create_draft_plan(db, week_start, lines)
+    except ConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    return _plan_to_dict(plan)
+
+
+@api_router.get(
+    "/plans",
+    response_model=List[PlanGenerateResponse],
+    summary="List plans, newest first",
+)
+def list_replenishment_plans(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
+    return [_plan_to_dict(p) for p in list_plans(db)]
+
+
+@api_router.get(
+    "/plans/{plan_id}/export",
+    summary="Plan as CSV: product_id,description,quantity,status",
+    response_class=Response,
+)
+def export_plan(plan_id: int, db: Session = Depends(get_db)) -> Response:
+    try:
+        plan = get_plan(db, plan_id)
+    except NotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    body = rows_to_csv(_plan_to_dict(plan)["orders"])
+    return Response(
+        content=body,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="plan_{plan.id}.csv"'},
+    )
+
+
+@api_router.get(
+    "/plans/{plan_id}",
+    response_model=PlanGenerateResponse,
+    summary="One plan with its order lines",
+)
+def get_replenishment_plan(plan_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    try:
+        return _plan_to_dict(get_plan(db, plan_id))
+    except NotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@api_router.patch(
+    "/plans/{plan_id}",
+    response_model=PlanGenerateResponse,
+    summary="Approve (creates Pending orders) or cancel a Draft plan (needs X-API-Key)",
+)
+def patch_replenishment_plan(
+    plan_id: int,
+    payload: PlanUpdateRequest,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    try:
+        plan = update_plan_status(db, plan_id, payload.status)
+    except NotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    _invalidate_risk_cache()
+    return _plan_to_dict(plan)
+
+
+API_KEY_SCHEME = "ApiKeyAuth"
+
+
+def custom_openapi() -> Dict[str, Any]:
+    """Default OpenAPI plus an apiKey scheme (header X-API-Key) on every write endpoint,
+    so the Authorize button in Swagger UI sends the key. Which routes need it comes from
+    api.middleware.requires_api_key, the same rule the middleware enforces."""
+    if app.openapi_schema:
+        return app.openapi_schema
+    from fastapi.openapi.utils import get_openapi
+
+    schema = get_openapi(
+        title=app.title, version=app.version, description=app.description,
+        routes=app.routes, tags=app.openapi_tags,
+    )
+    schema.setdefault("components", {}).setdefault("securitySchemes", {})[API_KEY_SCHEME] = {
+        "type": "apiKey", "in": "header", "name": "X-API-Key",
+        "description": "Required on write endpoints; must equal the server's API_KEY.",
+    }
+    for path, operations in schema["paths"].items():
+        for method, operation in operations.items():
+            if requires_api_key(method.upper(), path):
+                operation["security"] = [{API_KEY_SCHEME: []}]
+    app.openapi_schema = schema
+    return schema
+
+
+app.openapi = custom_openapi
+
+
+def _tag_for(path: str) -> str:
+    """Map a route path to its OpenAPI tag."""
+    rest = path[len("/api/"):].split("/")[0]
+    if rest in ("products", "forecast"):
+        return "Products"
+    if rest == "predict" or rest == "predictions":
+        return "Predictions"
+    if rest in ("risk", "simulate", "sensitivity"):
+        return "Risk"
+    if rest == "inventory":
+        return "Inventory"
+    if rest in ("orders", "plans"):
+        return "Orders"
+    if rest == "intelligence":
+        return "Intelligence"
+    if rest in ("analysis", "explain", "data"):
+        return "Analysis"
+    return "Meta"
+
+
+for _route in api_router.routes:
+    if hasattr(_route, "tags"):
+        _route.tags = [_tag_for(_route.path)]
+
 # Include the API router
 app.include_router(api_router)
 
@@ -1310,7 +1655,78 @@ def get_health_root_alias(db: Session = Depends(get_db)) -> Dict[str, Any]:
 )
 def predict_product_root_alias(
     payload: PredictRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Root alias for /api/predict (CONTRACTS_ADDENDUM.md / SRS FR-A-13)."""
-    return predict_product(payload=payload, db=db)
+    return predict_product(payload=payload, request=request, db=db)
+
+
+# -----------------------------------------------------------------------------
+# Dashboard (static files) — MUST stay last so it never shadows an API route
+# -----------------------------------------------------------------------------
+
+DASHBOARD_DIR = Path(__file__).resolve().parent.parent / "dashboard"
+
+
+_LANDING_HTML = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shelfwatch</title>
+<style>
+body{{font-family:system-ui,Segoe UI,Arial,sans-serif;max-width:42rem;margin:3rem auto;padding:0 1rem;color:#1f2933;line-height:1.55}}
+h1{{margin-bottom:.1rem}} .sub{{color:#52606d;margin-top:0}}
+.note{{background:#f5f7fa;border-left:4px solid #9aa5b1;padding:.7rem 1rem;margin:1.5rem 0;font-size:.95rem}}
+ul{{padding-left:1.2rem}} a{{color:#0b6bcb}}
+</style></head><body>
+<h1>Shelfwatch</h1>
+<p class="sub">Retail Product Demand Estimation and Stockout Risk Analysis</p>
+<p>Shelfwatch produces a weekly demand forecast for each product. It adds a stockout-risk flag and replenishment advice to help a retail inventory manager decide what to reorder.</p>
+<div class="note"><strong>Note:</strong> {disclaimer}</div>
+<ul>
+<li><a href="/docs">Try the API</a></li>
+<li><a href="/health">/health</a></li>
+<li><a href="/api/model-info">/api/model-info</a></li>
+<li><a href="/api/products">/api/products</a></li>
+</ul>
+</body></html>
+"""
+
+
+@app.get("/", include_in_schema=False)
+def landing_page() -> Response:
+    """Serve dashboard/index.html when present, else a small built-in landing page."""
+    index = DASHBOARD_DIR / "index.html"
+    if index.is_file():
+        return FileResponse(index, media_type="text/html")
+    from html import escape
+
+    body = _LANDING_HTML.format(disclaimer=escape(get_disclaimer()["text"]))
+    return HTMLResponse(body)
+
+
+def mount_dashboard(target: FastAPI, directory: Path = DASHBOARD_DIR) -> bool:
+    """Serve `directory` at "/" (html=True). Logs a warning and skips if missing."""
+    if not Path(directory).is_dir():
+        logging.getLogger("shelfwatch.api").warning(
+            "Dashboard folder %s not found; static dashboard not mounted.", directory
+        )
+        return False
+    from starlette.routing import Match, Mount
+    from fastapi.staticfiles import StaticFiles
+
+    class _DashboardMount(Mount):
+        """Never claim /api/* so unknown methods still give 405 and unknown paths 404 JSON."""
+
+        def matches(self, scope):
+            if scope.get("path", "").startswith("/api/"):
+                return Match.NONE, {}
+            return super().matches(scope)
+
+    target.router.routes.append(
+        _DashboardMount("/", app=StaticFiles(directory=str(directory), html=True), name="dashboard")
+    )
+    return True
+
+
+mount_dashboard(app)

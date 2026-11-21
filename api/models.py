@@ -399,6 +399,25 @@ class ReplenishmentPlan(Base):
     approved_at = Column(DateTime, nullable=True)
 
     orders = relationship("PurchaseOrder", back_populates="plan")
+    lines = relationship("PlanLine", back_populates="plan", order_by="PlanLine.id")
+
+
+class PlanLine(Base):
+    """Proposed order line of a plan; becomes a purchase order when the plan is approved."""
+
+    __tablename__ = "plan_lines"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    plan_id = Column(Integer, ForeignKey("replenishment_plans.id"), nullable=False)
+    product_id = Column(String(20), ForeignKey("products.product_id"), nullable=False)
+    quantity = Column(Integer, nullable=False)
+
+    plan = relationship("ReplenishmentPlan", back_populates="lines")
+
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="chk_line_qty"),
+        Index("idx_pl_plan", "plan_id"),
+    )
 
 
 class PurchaseOrder(Base):

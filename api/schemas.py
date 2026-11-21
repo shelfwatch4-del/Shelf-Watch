@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Any, Dict, List, Literal, Optional
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 # -----------------------------------------------------------------------------
@@ -298,6 +298,8 @@ class PredictRequest(BaseSchema):
     service_level: float = Field(0.95, ge=0.80, le=0.99, description="Target service level (0.80 to 0.99)")
     on_hand: Optional[float] = Field(None, ge=0, description="Override on-hand inventory position")
 
+    model_config = ConfigDict(json_schema_extra={"example": {"product_id": "85123A", "lead_time_weeks": 2, "service_level": 0.95}})
+
 
 class PredictResponse(BaseSchema):
     """POST /api/predict response."""
@@ -326,6 +328,8 @@ class PredictCustomRequest(BaseSchema):
     recent_customers: Optional[List[int]] = Field(None, description="Optional weekly customer counts")
     target_week: str = Field("2011-12-05", description="Forecast target week date (YYYY-MM-DD)")
 
+    model_config = ConfigDict(json_schema_extra={"example": {"recent_units": [10, 12, 9, 11, 13, 10, 12, 11], "target_week": "2011-12-05"}})
+
 
 class PredictCustomResponse(BaseSchema):
     """POST /api/predict/custom response."""
@@ -341,6 +345,8 @@ class RiskRequest(BaseSchema):
     lead_time_weeks: int = Field(1, ge=1, le=4, description="Lead time weeks (1-4)")
     service_level: float = Field(0.95, ge=0.80, le=0.99, description="Target service level (0.80-0.99)")
     initial_stock_weeks: float = Field(3.0, ge=0.5, le=8.0, description="Baseline stock cover weeks (0.5-8.0)")
+
+    model_config = ConfigDict(json_schema_extra={"example": {"lead_time_weeks": 2, "service_level": 0.95, "initial_stock_weeks": 3.0}})
 
 
 class RiskItem(BaseSchema):
@@ -539,6 +545,8 @@ class InventoryCreateUpdateRequest(BaseSchema):
     lead_time_weeks: int = Field(..., ge=1, le=4)
     service_level: float = Field(..., ge=0.80, le=0.99)
 
+    model_config = ConfigDict(json_schema_extra={"example": {"on_hand": 75, "lead_time_weeks": 2, "service_level": 0.95}})
+
 
 class InventoryResponse(BaseSchema):
     """Inventory record response."""
@@ -555,11 +563,21 @@ class OrderCreateRequest(BaseSchema):
     quantity: int = Field(..., gt=0)
     supplier_note: Optional[str] = None
 
+    model_config = ConfigDict(json_schema_extra={"example": {"product_id": "85123A", "quantity": 120, "supplier_note": "Rush order"}})
+
 
 class OrderUpdateRequest(BaseSchema):
-    """PATCH /api/orders/{id} request."""
-    status: Optional[str] = None
+    """PATCH /api/orders/{id} request: `{status}` or `{quantity}` (at least one)."""
+    status: Optional[Literal["Pending", "Approved", "Received", "Cancelled"]] = None
     quantity: Optional[int] = Field(None, gt=0)
+
+    @model_validator(mode="after")
+    def _require_a_change(self) -> "OrderUpdateRequest":
+        if self.status is None and self.quantity is None:
+            raise ValueError("Provide 'status' or 'quantity'.")
+        return self
+
+    model_config = ConfigDict(json_schema_extra={"example": {"status": "Approved"}})
 
 
 class OrderResponse(BaseSchema):
@@ -573,9 +591,28 @@ class OrderResponse(BaseSchema):
     updated_at: Optional[str] = None
 
 
+class PlanOrderLine(BaseSchema):
+    """One line of a plan: a proposed line (Draft/Cancelled) or its purchase order (Approved)."""
+    id: Optional[int] = None
+    product_id: str
+    description: Optional[str] = None
+    quantity: int
+    status: str
+
+
 class PlanGenerateResponse(BaseSchema):
-    """POST /api/plans/generate response."""
+    """Plan with its order lines (POST /api/plans/generate, GET/PATCH /api/plans/{id})."""
     id: int
     week_start: str
     status: str
-    orders: List[OrderResponse] = Field(default_factory=list)
+    note: Optional[str] = None
+    created_at: Optional[str] = None
+    approved_at: Optional[str] = None
+    orders: List[PlanOrderLine] = Field(default_factory=list)
+
+
+class PlanUpdateRequest(BaseSchema):
+    """PATCH /api/plans/{id} request."""
+    status: Literal["Approved", "Cancelled"]
+
+    model_config = ConfigDict(json_schema_extra={"example": {"status": "Approved"}})

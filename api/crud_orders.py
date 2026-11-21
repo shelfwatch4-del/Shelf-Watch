@@ -221,7 +221,8 @@ def update_order(
         order.quantity = valid_qty
 
     # Handle status update
-    if target_status is not None and target_status != order.status:
+    # A same-status "transition" (e.g. Pending -> Pending) is not in the table, so it is a 409.
+    if target_status is not None:
         allowed = ALLOWED_STATUS_TRANSITIONS.get(order.status, set())
         if target_status not in allowed:
             raise Conflict(

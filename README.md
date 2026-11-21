@@ -69,6 +69,51 @@ segs = pd.read_csv("data/processed/product_segments.csv", dtype={"product_id": s
 build_error_analysis(preds, segs)
 ```
 
+## API
+
+Start the server (`uvicorn api.main:app`), then browse interactive docs at <http://127.0.0.1:8000/docs>
+(endpoints are grouped by tag: Meta, Products, Predictions, Risk, Inventory, Orders, Intelligence;
+every request body has an example). Write endpoints (`PUT/DELETE /api/inventory/*`,
+`POST/PATCH/DELETE /api/orders*`) need the `X-API-Key` header matching the server's `API_KEY`.
+Errors are always `{"detail": "..."}`.
+
+```bash
+export KEY=YOUR_API_KEY BASE=http://127.0.0.1:8000
+
+# Meta / Products
+curl $BASE/api/health
+curl $BASE/api/products
+curl $BASE/api/forecast/85123A
+
+# Predictions
+curl -X POST $BASE/api/predict -H "Content-Type: application/json"   -d '{"product_id": "85123A", "lead_time_weeks": 2, "service_level": 0.95}'
+curl -X POST $BASE/api/predict/custom -H "Content-Type: application/json"   -d '{"recent_units": [10, 12, 9, 11, 13, 10, 12, 11]}'
+
+# Risk
+curl -X POST $BASE/api/risk -H "Content-Type: application/json"   -d '{"lead_time_weeks": 2, "service_level": 0.95, "initial_stock_weeks": 3}'
+curl -X POST $BASE/api/simulate -H "Content-Type: application/json"   -d '{"lead_time_weeks": 2, "delay_weeks": 1}'
+
+# Inventory
+curl $BASE/api/inventory
+curl -X PUT $BASE/api/inventory/85123A -H "X-API-Key: $KEY" -H "Content-Type: application/json"   -d '{"on_hand": 75, "lead_time_weeks": 2, "service_level": 0.95}'
+curl -X DELETE $BASE/api/inventory/85123A -H "X-API-Key: $KEY"
+
+# Orders
+curl -X POST $BASE/api/orders -H "X-API-Key: $KEY" -H "Content-Type: application/json"   -d '{"product_id": "85123A", "quantity": 120}'
+curl -X PATCH $BASE/api/orders/1 -H "X-API-Key: $KEY" -H "Content-Type: application/json"   -d '{"status": "Approved"}'
+curl "$BASE/api/orders?status=Approved"
+curl -X DELETE $BASE/api/orders/1 -H "X-API-Key: $KEY"   # only Pending or Cancelled
+```
+
+Python client and demo (health, predict, create order, approve, change stock, cancel, delete):
+
+```bash
+SHELFWATCH_URL=$BASE SHELFWATCH_API_KEY=$KEY python scripts/api_client.py demo
+python scripts/bench_api.py        # latency: median and p95 over 50 calls per endpoint
+```
+
+See [docs/API_CLIENT_EXPLAINED.md](docs/API_CLIENT_EXPLAINED.md) for how the client works.
+
 ## Running Tests
 
 Run the contract schema tests (checks `data/mock/` and `data/processed/` when present):

@@ -188,7 +188,7 @@ Create api/middleware.py and register it in main.py:
 1. CORS from ALLOWED_ORIGINS (comma-separated; empty means none), methods GET POST PUT PATCH DELETE.
 2. Request ID and timing: every response gets X-Request-ID and X-Process-Time-Ms.
 3. Audit log: write method, path, status and duration to api_logs for /api paths except /api/logs. Never let a logging failure break a request.
-4. API key: write requests (PUT, DELETE on inventory and orders, POST /api/orders, PATCH) need header X-API-Key equal to the API_KEY environment variable (default demo-key for local use), else 401 {"detail": "Invalid or missing API key"}. Reads and the prediction endpoints stay open.
+4. API key: write requests (PUT, DELETE on inventory and orders, POST /api/orders, PATCH) need header X-API-Key equal to the API_KEY environment variable (no default: when API_KEY is unset every write is rejected), else 401 {"detail": "Invalid or missing API key"}. Reads and the prediction endpoints stay open.
 5. Rate limit: in-memory sliding window per client address, default 120 requests per minute (RATE_LIMIT env), else 429. Disable it in tests through the setting.
 6. Global exception handler: unhandled errors return {"detail": "Internal server error"} with status 500 and log the details server-side only.
 Tests (tests/test_middleware.py): headers present on every response; write without key gives 401, with key succeeds, GET needs no key; requests appear in /api/logs; rate limit returns 429 after the limit; a forced error returns a generic 500 with no stack trace; CORS headers appear only for allowed origins.

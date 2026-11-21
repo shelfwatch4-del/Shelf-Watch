@@ -52,7 +52,7 @@ def reset_cache():
 # Helpers
 # ---------------------------------------------------------------------------
 
-API_KEY = os.getenv("API_KEY", "shelfwatch-dev-key")
+API_KEY = os.environ["API_KEY"]
 WRITE_HEADERS = {"X-API-Key": API_KEY}
 
 DEFAULT_RISK_BODY: Dict[str, Any] = {}  # all defaults
@@ -102,6 +102,32 @@ class TestRiskMatchesEngineDirectly:
         assert api_summary["n_high"] + api_summary["n_medium"] + api_summary["n_low"] == len(
             direct_risk_df
         )
+
+    def test_risk_equals_compute_risk_exactly(self, client: TestClient) -> None:
+        """Items and summary must equal compute_risk fed the same DB inputs."""
+        from api.db import SessionLocal
+        from api.main import _load_risk_inputs, clean
+
+        resp = client.post("/api/risk", json=RISK_BODY)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+
+        db = SessionLocal()
+        try:
+            forecast_df, overrides, open_orders = _load_risk_inputs(db)
+        finally:
+            db.close()
+        direct = compute_risk(
+            forecast_df=forecast_df,
+            params=dict(RISK_BODY),
+            stock_overrides=overrides,
+            open_orders=open_orders,
+            lifecycle=data_store.lifecycle,
+        )
+        import json
+
+        assert body["items"] == json.loads(json.dumps(clean(direct)))
+        assert body["summary"] == json.loads(json.dumps(clean(summarize(direct))))
 
     def test_risk_params_echoed_with_seed(self, client: TestClient) -> None:
         """Params in response must echo all supplied values plus the seed."""

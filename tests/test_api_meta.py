@@ -12,6 +12,11 @@ import numpy as np
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from api.db import get_db, init_db, seed_demo_data
 
 from api.main import (
     REQUIRED_DATA_FILES,
@@ -24,9 +29,26 @@ from api.main import (
 
 @pytest.fixture(scope="module")
 def client():
-    """TestClient fixture with app lifespan execution."""
+    """TestClient with app lifespan, on a private in-memory SQLite seeded with the demo data,
+    so results do not depend on what other test modules did to the shared database."""
+    engine = create_engine(
+        "sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    init_db(engine)
+    seed_demo_data(engine)
+    Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    def _override():
+        db = Session()
+        try:
+            yield db
+        finally:
+            db.close()
+
     with TestClient(app) as test_client:
+        app.dependency_overrides[get_db] = _override
         yield test_client
+    app.dependency_overrides.pop(get_db, None)
 
 
 # -----------------------------------------------------------------------------
@@ -131,6 +153,36 @@ def test_health_root_alias(client: TestClient):
     root_resp = client.get("/health")
     assert root_resp.status_code == 200
     assert root_resp.json() == api_resp.json()
+
+
+def test_health_lists_multiple_tables(client: TestClient):
+    tables = client.get("/api/health").json()["database"]["tables"]
+    assert len(tables) > 1
+    assert all(isinstance(v, int) for v in tables.values())
+
+
+def test_health_degraded_when_db_unreachable(client: TestClient):
+    from api.main import app, get_db
+
+    class _Broken:
+        def execute(self, *a, **k):
+            raise RuntimeError("db down")
+
+    previous = app.dependency_overrides.get(get_db)
+    app.dependency_overrides[get_db] = lambda: _Broken()
+    try:
+        for path in ("/api/health", "/health"):
+            r = client.get(path)
+            assert r.status_code == 200
+            assert r.json() == {
+                "status": "degraded",
+                "database": {"connected": False, "tables": {}},
+            }
+    finally:
+        if previous is not None:
+            app.dependency_overrides[get_db] = previous
+        else:
+            app.dependency_overrides.pop(get_db, None)
 
 
 # -----------------------------------------------------------------------------
@@ -254,3 +306,38 @@ def test_missing_required_file_stops_startup(tmp_path: Path):
     assert "Missing required file:" in err_msg
     # Ensure command name is included in message
     assert "Run '" in err_msg
+
+
+# -----------------------------------------------------------------------------
+# B21: root aliases return identical bodies; mirrors Postman "00 mentor flow"
+# -----------------------------------------------------------------------------
+
+_MENTOR_BODY = {"product_id": "85123A", "lead_time_weeks": 1, "service_level": 0.95, "on_hand": None}
+
+
+def test_root_and_api_health_identical(client: TestClient):
+    assert client.get("/health").json() == client.get("/api/health").json()
+
+
+def test_root_and_api_predict_identical(client: TestClient):
+    a = client.post("/api/predict", json=_MENTOR_BODY)
+    r = client.post("/predict", json=_MENTOR_BODY)
+    assert a.status_code == r.status_code == 200
+    assert a.json() == r.json()
+
+
+def test_postman_mentor_flow_assertions(client: TestClient):
+    h = client.get("/health")
+    assert h.status_code == 200
+    j = h.json()
+    assert j["status"] == "ok"
+    assert j["database"]["connected"] is True
+    assert len(j["database"]["tables"]) > 0
+
+    p = client.post("/predict", json=_MENTOR_BODY)
+    assert p.status_code == 200
+    j = p.json()
+    for k in ("forecast_weekly", "risk_level", "action"):
+        assert k in j
+    assert j["risk_level"] in ("HIGH", "MEDIUM", "LOW")
+    assert j["forecast_p10"] <= j["forecast_weekly"] <= j["forecast_p90"]

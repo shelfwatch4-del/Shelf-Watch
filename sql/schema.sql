@@ -240,6 +240,18 @@ CREATE TABLE IF NOT EXISTS replenishment_plans (
   approved_at DATETIME NULL
 ) ENGINE=InnoDB;
 
+-- Proposed order lines of a plan. Rows become purchase_orders only when the plan is approved.
+CREATE TABLE IF NOT EXISTS plan_lines (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  plan_id    INT NOT NULL,
+  product_id VARCHAR(20) NOT NULL,
+  quantity   INT NOT NULL,
+  CONSTRAINT chk_line_qty CHECK (quantity > 0),
+  INDEX idx_pl_plan (plan_id),
+  FOREIGN KEY (plan_id) REFERENCES replenishment_plans(id),
+  FOREIGN KEY (product_id) REFERENCES products(product_id)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS purchase_orders (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   plan_id       INT NULL,

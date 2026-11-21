@@ -237,3 +237,119 @@ def test_get_db_session_lifecycle():
     # Closing generator should trigger finally block
     with pytest.raises(StopIteration):
         next(db_gen)
+
+
+# ---------------------------------------------------------------------------
+# Task B15: CRUD services against the real schema (transitions table, stock credit)
+# ---------------------------------------------------------------------------
+
+from itertools import product as _cross
+
+from api.crud_inventory import NotFound, ValidationError, delete_stock, list_stock, upsert_stock
+from api.crud_orders import (
+    ConflictError,
+    create_order,
+    delete_order,
+    open_order_quantities,
+    update_order,
+)
+
+_STATUSES = ["Pending", "Approved", "Received", "Cancelled"]
+_ALLOWED = {
+    ("Pending", "Approved"),
+    ("Pending", "Cancelled"),
+    ("Approved", "Received"),
+    ("Approved", "Cancelled"),
+}
+_PATH = {
+    "Pending": [],
+    "Approved": ["Approved"],
+    "Received": ["Approved", "Received"],
+    "Cancelled": ["Cancelled"],
+}
+
+
+@pytest.fixture
+def crud_session(test_session):
+    test_session.add(Product(product_id="P1", description="Widget"))
+    test_session.commit()
+    return test_session
+
+
+@pytest.mark.parametrize("src,dst", list(_cross(_STATUSES, _STATUSES)))
+def test_order_transitions_table(crud_session, src, dst):
+    order = create_order(crud_session, "P1", 10)
+    for step in _PATH[src]:
+        update_order(crud_session, order.id, status=step)
+
+    if (src, dst) in _ALLOWED:
+        assert update_order(crud_session, order.id, status=dst).status == dst
+    else:
+        with pytest.raises(ConflictError):
+            update_order(crud_session, order.id, status=dst)
+        crud_session.refresh(order)
+        assert order.status == src
+
+
+def test_only_receiving_changes_stock(crud_session):
+    upsert_stock(crud_session, "P1", {"on_hand": 100, "lead_time_weeks": 1, "service_level": 0.95})
+    o = create_order(crud_session, "P1", 30)
+    update_order(crud_session, o.id, status="Approved")
+    assert list_stock(crud_session)[0].on_hand == 100  # approving does not credit
+    update_order(crud_session, o.id, status="Received")
+    assert list_stock(crud_session)[0].on_hand == 130
+
+    with pytest.raises(ConflictError):  # a second receive must not double-credit
+        update_order(crud_session, o.id, status="Received")
+    assert list_stock(crud_session)[0].on_hand == 130
+
+
+def test_rejected_receive_leaves_stock_untouched(crud_session):
+    upsert_stock(crud_session, "P1", {"on_hand": 5, "lead_time_weeks": 1, "service_level": 0.95})
+    o = create_order(crud_session, "P1", 30)
+    with pytest.raises(ConflictError):  # Pending -> Received is not allowed
+        update_order(crud_session, o.id, status="Received")
+    assert list_stock(crud_session)[0].on_hand == 5
+
+
+def test_open_orders_count_pending_and_approved_only(crud_session):
+    ids = {s: create_order(crud_session, "P1", 10).id for s in _STATUSES}
+    for s in ("Approved", "Received"):
+        update_order(crud_session, ids[s], status="Approved")
+    update_order(crud_session, ids["Received"], status="Received")
+    update_order(crud_session, ids["Cancelled"], status="Cancelled")
+    assert open_order_quantities(crud_session) == {"P1": 20}  # Pending + Approved
+
+
+@pytest.mark.parametrize("status,deletable", [("Pending", True), ("Cancelled", True), ("Approved", False), ("Received", False)])
+def test_order_delete_rules(crud_session, status, deletable):
+    o = create_order(crud_session, "P1", 10)
+    for step in _PATH[status]:
+        update_order(crud_session, o.id, status=step)
+    if deletable:
+        delete_order(crud_session, o.id)
+        assert crud_session.query(PurchaseOrder).filter_by(id=o.id).count() == 0
+    else:
+        with pytest.raises(ConflictError):
+            delete_order(crud_session, o.id)
+        assert crud_session.query(PurchaseOrder).filter_by(id=o.id).count() == 1
+
+
+def test_stock_upsert_created_flag_and_delete(crud_session):
+    row, created = upsert_stock(crud_session, "P1", {"on_hand": 1, "lead_time_weeks": 1, "service_level": 0.9})
+    assert created is True
+    row, created = upsert_stock(crud_session, "P1", {"on_hand": 2, "lead_time_weeks": 3, "service_level": 0.9})
+    assert created is False and row.on_hand == 2 and row.lead_time_weeks == 3
+    assert crud_session.query(InventoryLevel).count() == 1  # replaced, not duplicated
+
+    delete_stock(crud_session, "P1")
+    with pytest.raises(NotFound):
+        delete_stock(crud_session, "P1")
+
+
+def test_invalid_stock_never_reaches_the_table(crud_session):
+    with pytest.raises(ValidationError):
+        upsert_stock(crud_session, "P1", {"on_hand": -1, "lead_time_weeks": 1, "service_level": 0.9})
+    with pytest.raises(NotFound):
+        upsert_stock(crud_session, "ZZ", {"on_hand": 1, "lead_time_weeks": 1, "service_level": 0.9})
+    assert crud_session.query(InventoryLevel).count() == 0
