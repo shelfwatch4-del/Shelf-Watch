@@ -1,0 +1,962 @@
+[
+  {
+    "groups": "base",
+    "val_wape": 0.535737,
+    "val_bias": 2.2483,
+    "diff_vs_base": 0.0,
+    "paired_diff_per_fold": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "model_name": "random_forest",
+    "target_mode": "raw",
+    "note": "Base 15 features"
+  },
+  {
+    "groups": "base+g1",
+    "val_wape": 0.535721,
+    "val_bias": 2.2164,
+    "diff_vs_base": -1.5e-05,
+    "paired_diff_per_fold": [
+      0.00195,
+      -0.001305,
+      -0.000642,
+      -0.000733,
+      0.000654
+    ],
+    "model_name": "random_forest",
+    "target_mode": "raw",
+    "note": "+ Derived behavior (order size, trend ratio, price index, cv_4, zero streak)"
+  },
+  {
+    "groups": "base+g2",
+    "val_wape": 0.535544,
+    "val_bias": 2.734,
+    "diff_vs_base": -0.000193,
+    "paired_diff_per_fold": [
+      -4.3e-05,
+      -0.001865,
+      0.002231,
+      -0.001785,
+      0.000498
+    ],
+    "model_name": "random_forest",
+    "target_mode": "raw",
+    "note": "+ Calendar UK (bank holidays, trading days)"
+  },
+  {
+    "groups": "base+g3",
+    "val_wape": 0.531819,
+    "val_bias": 2.7517,
+    "diff_vs_base": -0.003917,
+    "paired_diff_per_fold": [
+      0.000226,
+      -0.006744,
+      -0.004977,
+      -0.003299,
+      -0.004793
+    ],
+    "model_name": "random_forest",
+    "target_mode": "raw",
+    "note": "+ Prior year II (5w yoy mean, seasonal index, available flag)"
+  },
+  {
+    "groups": "base+g4",
+    "val_wape": 0.536023,
+    "val_bias": 2.0638,
+    "diff_vs_base": 0.000287,
+    "paired_diff_per_fold": [
+      3.8e-05,
+      -0.000334,
+      0.00134,
+      -0.000515,
+      0.000903
+    ],
+    "model_name": "random_forest",
+    "target_mode": "raw",
+    "note": "+ Transaction signals (return rate, export share, guest share)"
+  },
+  {
+    "groups": "base+g1+g3",
+    "val_wape": 0.532362,
+    "val_bias": 2.792,
+    "diff_vs_base": -0.003375,
+    "paired_diff_per_fold": [
+      0.00215,
+      -0.007201,
+      -0.00515,
+      -0.003366,
+      -0.003308
+    ],
+    "model_name": "random_forest",
+    "target_mode": "raw",
+    "note": "+ Derived behavior & Prior year II"
+  },
+  {
+    "groups": "all_groups",
+    "val_wape": 0.53278,
+    "val_bias": 3.1792,
+    "diff_vs_base": -0.002956,
+    "paired_diff_per_fold": [
+      0.001538,
+      -0.007871,
+      -0.002259,
+      -0.00401,
+      -0.002181
+    ],
+    "model_name": "random_forest",
+    "target_mode": "raw",
+    "note": "All groups (base + g1 + g2 + g3 + g4)"
+  },
+  {
+    "groups": "base_no_calendar",
+    "val_wape": 0.533482,
+    "val_bias": 1.2714,
+    "diff_vs_base": -0.002255,
+    "paired_diff_per_fold": [
+      0.002118,
+      -0.008569,
+      -0.00013,
+      -0.004868,
+      0.000174
+    ],
+    "model_name": "random_forest",
+    "target_mode": "raw",
+    "note": "Base without week_of_year and month"
+  },
+  {
+    "groups": "base+g3_no_calendar",
+    "val_wape": 0.530099,
+    "val_bias": 2.2888,
+    "diff_vs_base": -0.005638,
+    "paired_diff_per_fold": [
+      0.001207,
+      -0.01335,
+      -0.00403,
+      -0.007812,
+      -0.004202
+    ],
+    "model_name": "random_forest",
+    "target_mode": "raw",
+    "note": "Base + g3 without week_of_year and month"
+  },
+  {
+    "groups": "base+g1+g3_no_calendar",
+    "val_wape": 0.530674,
+    "val_bias": 2.1566,
+    "diff_vs_base": -0.005063,
+    "paired_diff_per_fold": [
+      0.002249,
+      -0.012582,
+      -0.004369,
+      -0.007705,
+      -0.002907
+    ],
+    "model_name": "random_forest",
+    "target_mode": "raw",
+    "note": "Base + g1 + g3 without week_of_year and month"
+  },
+  {
+    "groups": "all_groups_no_calendar",
+    "val_wape": 0.531325,
+    "val_bias": 2.7047,
+    "diff_vs_base": -0.004412,
+    "paired_diff_per_fold": [
+      0.001885,
+      -0.012152,
+      -0.00184,
+      -0.008238,
+      -0.001713
+    ],
+    "model_name": "random_forest",
+    "target_mode": "raw",
+    "note": "All groups without week_of_year and month"
+  },
+  {
+    "groups": "base_plus_christmas",
+    "val_wape": 0.535729,
+    "val_bias": 2.2468,
+    "diff_vs_base": -7e-06,
+    "paired_diff_per_fold": [
+      -3.6e-05,
+      -0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "model_name": "random_forest",
+    "target_mode": "raw",
+    "note": "Base plus weeks_to_christmas (tested for time index risk)"
+  },
+  {
+    "groups": "base",
+    "val_wape": 0.545565,
+    "val_bias": 2.5944,
+    "diff_vs_base": 0.0,
+    "paired_diff_per_fold": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "raw",
+    "note": "Base 15 features"
+  },
+  {
+    "groups": "base+g1",
+    "val_wape": 0.542426,
+    "val_bias": 0.6182,
+    "diff_vs_base": -0.003139,
+    "paired_diff_per_fold": [
+      -0.000593,
+      -0.004291,
+      -0.003141,
+      -0.007668,
+      -2e-06
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "raw",
+    "note": "+ Derived behavior (order size, trend ratio, price index, cv_4, zero streak)"
+  },
+  {
+    "groups": "base+g2",
+    "val_wape": 0.544425,
+    "val_bias": 3.5997,
+    "diff_vs_base": -0.001141,
+    "paired_diff_per_fold": [
+      0.0,
+      -0.005392,
+      0.003303,
+      -0.009513,
+      0.005899
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "raw",
+    "note": "+ Calendar UK (bank holidays, trading days)"
+  },
+  {
+    "groups": "base+g3",
+    "val_wape": 0.538139,
+    "val_bias": 3.0239,
+    "diff_vs_base": -0.007426,
+    "paired_diff_per_fold": [
+      -0.006479,
+      -0.00972,
+      -0.01093,
+      -0.007119,
+      -0.002884
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "raw",
+    "note": "+ Prior year II (5w yoy mean, seasonal index, available flag)"
+  },
+  {
+    "groups": "base+g4",
+    "val_wape": 0.544007,
+    "val_bias": 1.4449,
+    "diff_vs_base": -0.001558,
+    "paired_diff_per_fold": [
+      -0.002852,
+      -0.000458,
+      -0.003831,
+      -0.005427,
+      0.004778
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "raw",
+    "note": "+ Transaction signals (return rate, export share, guest share)"
+  },
+  {
+    "groups": "base+g1+g3",
+    "val_wape": 0.536638,
+    "val_bias": 1.5549,
+    "diff_vs_base": -0.008927,
+    "paired_diff_per_fold": [
+      -0.004072,
+      -0.014764,
+      -0.01356,
+      -0.006446,
+      -0.005793
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "raw",
+    "note": "+ Derived behavior & Prior year II"
+  },
+  {
+    "groups": "all_groups",
+    "val_wape": 0.532538,
+    "val_bias": 1.9254,
+    "diff_vs_base": -0.013027,
+    "paired_diff_per_fold": [
+      -0.007695,
+      -0.022996,
+      -0.013453,
+      -0.022479,
+      0.001487
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "raw",
+    "note": "All groups (base + g1 + g2 + g3 + g4)"
+  },
+  {
+    "groups": "base_no_calendar",
+    "val_wape": 0.536901,
+    "val_bias": -0.9099,
+    "diff_vs_base": -0.008664,
+    "paired_diff_per_fold": [
+      0.008885,
+      -0.035854,
+      0.002105,
+      -0.018518,
+      6e-05
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "raw",
+    "note": "Base without week_of_year and month"
+  },
+  {
+    "groups": "base+g3_no_calendar",
+    "val_wape": 0.530718,
+    "val_bias": -0.1393,
+    "diff_vs_base": -0.014847,
+    "paired_diff_per_fold": [
+      0.004439,
+      -0.046895,
+      -0.005112,
+      -0.025409,
+      -0.001256
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "raw",
+    "note": "Base + g3 without week_of_year and month"
+  },
+  {
+    "groups": "base+g1+g3_no_calendar",
+    "val_wape": 0.530582,
+    "val_bias": -0.5425,
+    "diff_vs_base": -0.014983,
+    "paired_diff_per_fold": [
+      0.005079,
+      -0.045141,
+      -0.008558,
+      -0.022845,
+      -0.003452
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "raw",
+    "note": "Base + g1 + g3 without week_of_year and month"
+  },
+  {
+    "groups": "all_groups_no_calendar",
+    "val_wape": 0.528564,
+    "val_bias": 2.3229,
+    "diff_vs_base": -0.017001,
+    "paired_diff_per_fold": [
+      0.004553,
+      -0.044042,
+      -0.009775,
+      -0.034985,
+      -0.000755
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "raw",
+    "note": "All groups without week_of_year and month"
+  },
+  {
+    "groups": "base_plus_christmas",
+    "val_wape": 0.547176,
+    "val_bias": 2.6303,
+    "diff_vs_base": 0.00161,
+    "paired_diff_per_fold": [
+      -0.000341,
+      0.008361,
+      0.000392,
+      -0.00118,
+      0.00082
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "raw",
+    "note": "Base plus weeks_to_christmas (tested for time index risk)"
+  },
+  {
+    "groups": "base",
+    "val_wape": 0.641637,
+    "val_bias": 34.8721,
+    "diff_vs_base": 0.0,
+    "paired_diff_per_fold": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "scale_aware",
+    "note": "Base 15 features"
+  },
+  {
+    "groups": "base+g1",
+    "val_wape": 0.609654,
+    "val_bias": 26.8965,
+    "diff_vs_base": -0.031983,
+    "paired_diff_per_fold": [
+      0.009807,
+      -0.161408,
+      -0.004134,
+      -0.009543,
+      0.005363
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "scale_aware",
+    "note": "+ Derived behavior (order size, trend ratio, price index, cv_4, zero streak)"
+  },
+  {
+    "groups": "base+g2",
+    "val_wape": 0.626654,
+    "val_bias": 35.0778,
+    "diff_vs_base": -0.014982,
+    "paired_diff_per_fold": [
+      0.0,
+      -0.031523,
+      -0.038561,
+      -0.008315,
+      0.003486
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "scale_aware",
+    "note": "+ Calendar UK (bank holidays, trading days)"
+  },
+  {
+    "groups": "base+g3",
+    "val_wape": 0.631843,
+    "val_bias": 36.8944,
+    "diff_vs_base": -0.009794,
+    "paired_diff_per_fold": [
+      -0.004393,
+      -0.018591,
+      -0.001321,
+      -0.010168,
+      -0.014496
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "scale_aware",
+    "note": "+ Prior year II (5w yoy mean, seasonal index, available flag)"
+  },
+  {
+    "groups": "base+g4",
+    "val_wape": 0.611078,
+    "val_bias": 29.075,
+    "diff_vs_base": -0.030558,
+    "paired_diff_per_fold": [
+      0.003099,
+      -0.149579,
+      -0.000659,
+      -0.003423,
+      -0.002229
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "scale_aware",
+    "note": "+ Transaction signals (return rate, export share, guest share)"
+  },
+  {
+    "groups": "base+g1+g3",
+    "val_wape": 0.608503,
+    "val_bias": 28.4484,
+    "diff_vs_base": -0.033133,
+    "paired_diff_per_fold": [
+      -0.000408,
+      -0.154827,
+      -0.005486,
+      -0.008544,
+      0.003599
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "scale_aware",
+    "note": "+ Derived behavior & Prior year II"
+  },
+  {
+    "groups": "all_groups",
+    "val_wape": 0.608025,
+    "val_bias": 30.9419,
+    "diff_vs_base": -0.033612,
+    "paired_diff_per_fold": [
+      0.005225,
+      -0.169859,
+      0.002853,
+      -0.011321,
+      0.005045
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "scale_aware",
+    "note": "All groups (base + g1 + g2 + g3 + g4)"
+  },
+  {
+    "groups": "base_no_calendar",
+    "val_wape": 0.56552,
+    "val_bias": 16.9119,
+    "diff_vs_base": -0.076116,
+    "paired_diff_per_fold": [
+      0.014938,
+      -0.260059,
+      -0.110804,
+      -0.025178,
+      0.000521
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "scale_aware",
+    "note": "Base without week_of_year and month"
+  },
+  {
+    "groups": "base+g3_no_calendar",
+    "val_wape": 0.563582,
+    "val_bias": 16.7352,
+    "diff_vs_base": -0.078054,
+    "paired_diff_per_fold": [
+      0.009279,
+      -0.247002,
+      -0.110593,
+      -0.027979,
+      -0.013975
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "scale_aware",
+    "note": "Base + g3 without week_of_year and month"
+  },
+  {
+    "groups": "base+g1+g3_no_calendar",
+    "val_wape": 0.578938,
+    "val_bias": 17.2656,
+    "diff_vs_base": -0.062698,
+    "paired_diff_per_fold": [
+      0.015852,
+      -0.185738,
+      -0.103493,
+      -0.040974,
+      0.000861
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "scale_aware",
+    "note": "Base + g1 + g3 without week_of_year and month"
+  },
+  {
+    "groups": "all_groups_no_calendar",
+    "val_wape": 0.579707,
+    "val_bias": 21.3726,
+    "diff_vs_base": -0.06193,
+    "paired_diff_per_fold": [
+      0.014874,
+      -0.18969,
+      -0.09332,
+      -0.046974,
+      0.005461
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "scale_aware",
+    "note": "All groups without week_of_year and month"
+  },
+  {
+    "groups": "base_plus_christmas",
+    "val_wape": 0.641298,
+    "val_bias": 34.6867,
+    "diff_vs_base": -0.000338,
+    "paired_diff_per_fold": [
+      0.0,
+      0.0,
+      -0.001692,
+      0.0,
+      0.0
+    ],
+    "model_name": "lightgbm",
+    "target_mode": "scale_aware",
+    "note": "Base plus weeks_to_christmas (tested for time index risk)"
+  },
+  {
+    "groups": "base",
+    "val_wape": 0.538733,
+    "val_bias": 5.3193,
+    "diff_vs_base": 0.0,
+    "paired_diff_per_fold": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "model_name": "ridge",
+    "target_mode": "raw",
+    "note": "Base 15 features"
+  },
+  {
+    "groups": "base+g1",
+    "val_wape": 0.539269,
+    "val_bias": 6.3775,
+    "diff_vs_base": 0.000536,
+    "paired_diff_per_fold": [
+      -0.007884,
+      0.007787,
+      0.002243,
+      0.000485,
+      5e-05
+    ],
+    "model_name": "ridge",
+    "target_mode": "raw",
+    "note": "+ Derived behavior (order size, trend ratio, price index, cv_4, zero streak)"
+  },
+  {
+    "groups": "base+g2",
+    "val_wape": 0.549908,
+    "val_bias": 16.3396,
+    "diff_vs_base": 0.011174,
+    "paired_diff_per_fold": [
+      0.0,
+      0.039981,
+      0.021518,
+      -0.009478,
+      0.003851
+    ],
+    "model_name": "ridge",
+    "target_mode": "raw",
+    "note": "+ Calendar UK (bank holidays, trading days)"
+  },
+  {
+    "groups": "base+g3",
+    "val_wape": 0.533977,
+    "val_bias": 6.6761,
+    "diff_vs_base": -0.004756,
+    "paired_diff_per_fold": [
+      -0.00192,
+      -0.009759,
+      -0.00557,
+      -0.002786,
+      -0.003745
+    ],
+    "model_name": "ridge",
+    "target_mode": "raw",
+    "note": "+ Prior year II (5w yoy mean, seasonal index, available flag)"
+  },
+  {
+    "groups": "base+g4",
+    "val_wape": 0.537578,
+    "val_bias": 4.971,
+    "diff_vs_base": -0.001155,
+    "paired_diff_per_fold": [
+      -0.001131,
+      -0.002519,
+      -0.003964,
+      0.00199,
+      -0.00015
+    ],
+    "model_name": "ridge",
+    "target_mode": "raw",
+    "note": "+ Transaction signals (return rate, export share, guest share)"
+  },
+  {
+    "groups": "base+g1+g3",
+    "val_wape": 0.534384,
+    "val_bias": 7.6968,
+    "diff_vs_base": -0.004349,
+    "paired_diff_per_fold": [
+      -0.009415,
+      -0.001454,
+      -0.004191,
+      -0.002327,
+      -0.004358
+    ],
+    "model_name": "ridge",
+    "target_mode": "raw",
+    "note": "+ Derived behavior & Prior year II"
+  },
+  {
+    "groups": "all_groups",
+    "val_wape": 0.54399,
+    "val_bias": 18.3419,
+    "diff_vs_base": 0.005257,
+    "paired_diff_per_fold": [
+      -0.010853,
+      0.033157,
+      0.013454,
+      -0.009561,
+      8.8e-05
+    ],
+    "model_name": "ridge",
+    "target_mode": "raw",
+    "note": "All groups (base + g1 + g2 + g3 + g4)"
+  },
+  {
+    "groups": "base_no_calendar",
+    "val_wape": 0.532921,
+    "val_bias": 1.5205,
+    "diff_vs_base": -0.005813,
+    "paired_diff_per_fold": [
+      -0.014912,
+      -0.02246,
+      0.004888,
+      0.001668,
+      0.001754
+    ],
+    "model_name": "ridge",
+    "target_mode": "raw",
+    "note": "Base without week_of_year and month"
+  },
+  {
+    "groups": "base+g3_no_calendar",
+    "val_wape": 0.52797,
+    "val_bias": 2.9087,
+    "diff_vs_base": -0.010764,
+    "paired_diff_per_fold": [
+      -0.019885,
+      -0.03208,
+      0.000219,
+      -0.00032,
+      -0.001752
+    ],
+    "model_name": "ridge",
+    "target_mode": "raw",
+    "note": "Base + g3 without week_of_year and month"
+  },
+  {
+    "groups": "base+g1+g3_no_calendar",
+    "val_wape": 0.52681,
+    "val_bias": 2.5362,
+    "diff_vs_base": -0.011923,
+    "paired_diff_per_fold": [
+      -0.030508,
+      -0.027639,
+      0.001228,
+      -0.000305,
+      -0.002393
+    ],
+    "model_name": "ridge",
+    "target_mode": "raw",
+    "note": "Base + g1 + g3 without week_of_year and month"
+  },
+  {
+    "groups": "all_groups_no_calendar",
+    "val_wape": 0.527324,
+    "val_bias": 7.8973,
+    "diff_vs_base": -0.011409,
+    "paired_diff_per_fold": [
+      -0.031319,
+      -0.033947,
+      0.011561,
+      -0.006786,
+      0.003446
+    ],
+    "model_name": "ridge",
+    "target_mode": "raw",
+    "note": "All groups without week_of_year and month"
+  },
+  {
+    "groups": "base_plus_christmas",
+    "val_wape": 0.539967,
+    "val_bias": 6.1053,
+    "diff_vs_base": 0.001233,
+    "paired_diff_per_fold": [
+      0.005794,
+      0.002138,
+      -0.000856,
+      -0.000626,
+      -0.000284
+    ],
+    "model_name": "ridge",
+    "target_mode": "raw",
+    "note": "Base plus weeks_to_christmas (tested for time index risk)"
+  },
+  {
+    "groups": "base",
+    "val_wape": 1.123066,
+    "val_bias": 177.2317,
+    "diff_vs_base": 0.0,
+    "paired_diff_per_fold": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "model_name": "ridge",
+    "target_mode": "scale_aware",
+    "note": "Base 15 features"
+  },
+  {
+    "groups": "base+g1",
+    "val_wape": 0.844315,
+    "val_bias": 92.7689,
+    "diff_vs_base": -0.278752,
+    "paired_diff_per_fold": [
+      -0.015113,
+      -0.297964,
+      -0.781236,
+      -0.216354,
+      -0.083091
+    ],
+    "model_name": "ridge",
+    "target_mode": "scale_aware",
+    "note": "+ Derived behavior (order size, trend ratio, price index, cv_4, zero streak)"
+  },
+  {
+    "groups": "base+g2",
+    "val_wape": 1.245569,
+    "val_bias": 217.2739,
+    "diff_vs_base": 0.122503,
+    "paired_diff_per_fold": [
+      0.0,
+      0.324892,
+      0.279494,
+      -0.01025,
+      0.018378
+    ],
+    "model_name": "ridge",
+    "target_mode": "scale_aware",
+    "note": "+ Calendar UK (bank holidays, trading days)"
+  },
+  {
+    "groups": "base+g3",
+    "val_wape": 1.121474,
+    "val_bias": 181.5508,
+    "diff_vs_base": -0.001592,
+    "paired_diff_per_fold": [
+      -0.00327,
+      0.038106,
+      0.00096,
+      -0.015028,
+      -0.02873
+    ],
+    "model_name": "ridge",
+    "target_mode": "scale_aware",
+    "note": "+ Prior year II (5w yoy mean, seasonal index, available flag)"
+  },
+  {
+    "groups": "base+g4",
+    "val_wape": 1.125381,
+    "val_bias": 175.2658,
+    "diff_vs_base": 0.002315,
+    "paired_diff_per_fold": [
+      0.004844,
+      -0.027342,
+      -0.051386,
+      0.048438,
+      0.03702
+    ],
+    "model_name": "ridge",
+    "target_mode": "scale_aware",
+    "note": "+ Transaction signals (return rate, export share, guest share)"
+  },
+  {
+    "groups": "base+g1+g3",
+    "val_wape": 0.846821,
+    "val_bias": 96.9161,
+    "diff_vs_base": -0.276246,
+    "paired_diff_per_fold": [
+      -0.019401,
+      -0.274867,
+      -0.775728,
+      -0.218578,
+      -0.092656
+    ],
+    "model_name": "ridge",
+    "target_mode": "scale_aware",
+    "note": "+ Derived behavior & Prior year II"
+  },
+  {
+    "groups": "all_groups",
+    "val_wape": 0.949022,
+    "val_bias": 137.7079,
+    "diff_vs_base": -0.174044,
+    "paired_diff_per_fold": [
+      -0.013956,
+      -0.016597,
+      -0.585556,
+      -0.185808,
+      -0.068304
+    ],
+    "model_name": "ridge",
+    "target_mode": "scale_aware",
+    "note": "All groups (base + g1 + g2 + g3 + g4)"
+  },
+  {
+    "groups": "base_no_calendar",
+    "val_wape": 0.796445,
+    "val_bias": 35.9819,
+    "diff_vs_base": -0.326621,
+    "paired_diff_per_fold": [
+      -0.012567,
+      -0.502826,
+      -0.861427,
+      -0.222709,
+      -0.033578
+    ],
+    "model_name": "ridge",
+    "target_mode": "scale_aware",
+    "note": "Base without week_of_year and month"
+  },
+  {
+    "groups": "base+g3_no_calendar",
+    "val_wape": 0.784211,
+    "val_bias": 33.455,
+    "diff_vs_base": -0.338855,
+    "paired_diff_per_fold": [
+      -0.01976,
+      -0.499371,
+      -0.875067,
+      -0.236485,
+      -0.063593
+    ],
+    "model_name": "ridge",
+    "target_mode": "scale_aware",
+    "note": "Base + g3 without week_of_year and month"
+  },
+  {
+    "groups": "base+g1+g3_no_calendar",
+    "val_wape": 0.724696,
+    "val_bias": 23.8118,
+    "diff_vs_base": -0.39837,
+    "paired_diff_per_fold": [
+      -0.028911,
+      -0.516088,
+      -1.040647,
+      -0.312426,
+      -0.093779
+    ],
+    "model_name": "ridge",
+    "target_mode": "scale_aware",
+    "note": "Base + g1 + g3 without week_of_year and month"
+  },
+  {
+    "groups": "all_groups_no_calendar",
+    "val_wape": 0.747431,
+    "val_bias": 46.8511,
+    "diff_vs_base": -0.375635,
+    "paired_diff_per_fold": [
+      -0.021296,
+      -0.490233,
+      -1.007347,
+      -0.292752,
+      -0.066548
+    ],
+    "model_name": "ridge",
+    "target_mode": "scale_aware",
+    "note": "All groups without week_of_year and month"
+  },
+  {
+    "groups": "base_plus_christmas",
+    "val_wape": 1.144993,
+    "val_bias": 184.9904,
+    "diff_vs_base": 0.021927,
+    "paired_diff_per_fold": [
+      0.006301,
+      0.057217,
+      0.039967,
+      0.006116,
+      3.3e-05
+    ],
+    "model_name": "ridge",
+    "target_mode": "scale_aware",
+    "note": "Base plus weeks_to_christmas (tested for time index risk)"
+  }
+]

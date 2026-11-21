@@ -29,3 +29,50 @@
 - Do not fill rows before a product's first active week.
 - Update `validate_c1` to require every product's range to end at the last full week (`2011-11-28`), with no gaps except closed weeks.
 - Resulting counts: `weekly_demand.parquet` = **`5,067` rows** (`5,147 - 95` excluded closure rows `+ 15` tail zero-fill rows for `21829` and `22740`); `build_features` = **`3,467` train rows** (`35` target weeks) and **`800` test rows** (`100` products × `8` weeks).
+
+---
+
+## CR-003: G3 Prior-Year Window Truncation for Target Week `2011-12-05` and Boundary Test Weeks
+
+- **Date:** 2026-11-21
+- **Status:** Proposed (Task M8b audit)
+- **Affected Files:** `src/features.py`, `CONTRACTS.md` (C10: `prior_year_weekly.parquet`), `data/processed/next_week_forecast.csv`
+- **Contracts Affected:** `CONTRACTS.md` C10
+
+### Discrepancy Observed
+1. **Prior-Year Coverage Limit:**
+   Under Contract C10, `prior_year_weekly.parquet` only contains weeks strictly before `2010-12-06` (derived from Online Retail II `Year 2009-2010`). Its latest record is Monday `2010-11-29`.
+2. **Window Calculation for Forecast Week (`2011-12-05`):**
+   Group G3 computes features across the 5-week window $t-54$ to $t-50$ weeks relative to target week $t$.
+   For target week `2011-12-05`:
+   - $t-54$: `2010-11-22` (present in C10)
+   - $t-53$: `2010-11-29` (present in C10)
+   - $t-52$: `2010-12-06` (**missing from C10**; in primary dataset C1)
+   - $t-51$: `2010-12-13` (**missing from C10**; in primary dataset C1)
+   - $t-50$: `2010-12-20` (**missing from C10**; in primary dataset C1)
+3. **Impact of 3-Value Minimum Rule:**
+   `src/features.py` requires at least 3 valid prior-year observations (`len(valid) >= 3`) to compute `yoy_mean_5w` and `yoy_seasonal_index`. Because only 2 weeks (`2010-11-22` and `2010-11-29`) are present in C10, `yoy_mean_5w` evaluates to `NaN` and `yoy_available` evaluates to `0.0` for **100% of products** on the exact forecast week `2011-12-05`.
+4. **Boundary Test Weeks:**
+   - Test week `2011-11-21` has 4 weeks in C10.
+   - Test week `2011-11-28` has exactly 3 weeks in C10 (`2010-11-15`, `2010-11-22`, `2010-11-29`), so any missing prior-year sales will cause it to drop below the 3-value threshold.
+
+### Proposed Resolution
+Rather than silently modifying C10, we propose:
+- In `build_features` / `build_future_features`, when evaluating weeks where $t-54 \dots t-50$ overlaps with `2010-12-06` or later, stitch the observations from the primary cleaned dataset `data/processed/weekly_demand.parquet` (C1) for weeks `2010-12-06` through `2010-12-20` into the prior-year lookup.
+- Because these historical weeks are strictly in the training period (past data before target $t$), stitching them from C1 introduces zero data leakage while restoring full 5-week window coverage for forecast week `2011-12-05`.
+
+---
+
+## CR-004: Confirmation of `total_units` and `pattern_class` in `GET /api/products`
+
+- **Date:** 2026-11-21
+- **Status:** Ratified in CONTRACTS.md (C7) and CONTRACTS_ADDENDUM.md
+- **Affected Spec:** `CONTRACTS.md` Section C7 (`GET /api/products`), `CONTRACTS_ADDENDUM.md` Section C7
+- **Implementation:** Task B10 (`api/main.py`, `api/schemas.py`)
+
+### Summary
+- `GET /api/products` response contract is confirmed as `[{product_id, description, total_units, pattern_class}]`.
+- `total_units` is the integer sum of sales units across the training period (`week_start < 2011-10-10`). Products are ordered descending by `total_units`.
+- `pattern_class` is sourced from `data/processed/product_intelligence.csv` (`smooth`, `erratic`, `intermittent`, `lumpy`) or null if not yet classified.
+- Both fields are already documented in `CONTRACTS.md` (line 136) and `CONTRACTS_ADDENDUM.md` (line 52).
+

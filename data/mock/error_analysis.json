@@ -3,27 +3,27 @@
   "by_segment": [
     {
       "segment": "low",
-      "n_products": 4,
-      "MAE": 12.0778,
-      "RMSE": 15.5876,
-      "WAPE": 0.0761,
-      "bias": -5.9334
+      "n_products": 3,
+      "MAE": 9.8904,
+      "RMSE": 12.7019,
+      "WAPE": 0.0694,
+      "bias": -3.1454
     },
     {
       "segment": "medium",
       "n_products": 3,
-      "MAE": 20.0354,
-      "RMSE": 26.3544,
-      "WAPE": 0.0557,
-      "bias": 0.8721
+      "MAE": 19.9962,
+      "RMSE": 26.3032,
+      "WAPE": 0.068,
+      "bias": -2.9912
     },
     {
       "segment": "high",
-      "n_products": 3,
-      "MAE": 42.1067,
-      "RMSE": 53.7892,
-      "WAPE": 0.0715,
-      "bias": 1.6092
+      "n_products": 4,
+      "MAE": 36.2694,
+      "RMSE": 47.8953,
+      "WAPE": 0.0668,
+      "bias": 0.53
     }
   ],
   "by_week": [
@@ -99,7 +99,7 @@
     {
       "product_id": "21212",
       "description": "PACK OF 72 RETROSPOT CAKE CASES",
-      "segment": "medium",
+      "segment": "high",
       "mean_actual": 404.25,
       "mean_predicted": 401.54,
       "MAE": 18.7575,
@@ -176,7 +176,7 @@
     {
       "product_id": "22423",
       "description": "REGENCY CAKESTAND 3 TIER",
-      "segment": "low",
+      "segment": "medium",
       "mean_actual": 207.0,
       "mean_predicted": 192.7,
       "MAE": 18.64,

@@ -1,0 +1,18 @@
+[
+  "lag_1",
+  "lag_2",
+  "lag_3",
+  "lag_4",
+  "roll_mean_4",
+  "roll_std_4",
+  "roll_mean_8",
+  "roll_std_8",
+  "prev_avg_price",
+  "prev_orders",
+  "prev_customers",
+  "prod_past_mean",
+  "prod_past_std",
+  "yoy_mean_5w",
+  "yoy_seasonal_index",
+  "yoy_available"
+]

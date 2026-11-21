@@ -1,0 +1,155 @@
+{
+  "served_model": "random_forest_raw",
+  "decision_rule": "Lowest mean validation WAPE among sets improving at least 4 of 5 folds over base",
+  "winning_feature_set": "base+g3_no_calendar",
+  "winning_val_wape": 0.530099,
+  "base_val_wape": 0.535737,
+  "val_wape_diff": -0.005638,
+  "chosen_groups": [
+    "base",
+    "g3"
+  ],
+  "chosen_feature_list": [
+    "lag_1",
+    "lag_2",
+    "lag_3",
+    "lag_4",
+    "roll_mean_4",
+    "roll_std_4",
+    "roll_mean_8",
+    "roll_std_8",
+    "prev_avg_price",
+    "prev_orders",
+    "prev_customers",
+    "prod_past_mean",
+    "prod_past_std",
+    "yoy_mean_5w",
+    "yoy_seasonal_index",
+    "yoy_available"
+  ],
+  "n_chosen_features": 16,
+  "unproven_groups": [
+    "g2",
+    "g4"
+  ],
+  "evaluated_sets_summary": {
+    "base": {
+      "val_wape": 0.535737,
+      "val_bias": 2.2483,
+      "diff_vs_base": 0.0,
+      "folds_improved": "0/5",
+      "paired_diff_per_fold": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "meets_4_of_5_rule": true
+    },
+    "base+g3": {
+      "val_wape": 0.531819,
+      "val_bias": 2.7517,
+      "diff_vs_base": -0.003917,
+      "folds_improved": "4/5",
+      "paired_diff_per_fold": [
+        0.000226,
+        -0.006744,
+        -0.004977,
+        -0.003299,
+        -0.004793
+      ],
+      "meets_4_of_5_rule": true
+    },
+    "base+g1+g3": {
+      "val_wape": 0.532362,
+      "val_bias": 2.792,
+      "diff_vs_base": -0.003375,
+      "folds_improved": "4/5",
+      "paired_diff_per_fold": [
+        0.00215,
+        -0.007201,
+        -0.00515,
+        -0.003366,
+        -0.003308
+      ],
+      "meets_4_of_5_rule": true
+    },
+    "all_groups": {
+      "val_wape": 0.53278,
+      "val_bias": 3.1792,
+      "diff_vs_base": -0.002956,
+      "folds_improved": "4/5",
+      "paired_diff_per_fold": [
+        0.001538,
+        -0.007871,
+        -0.002259,
+        -0.00401,
+        -0.002181
+      ],
+      "meets_4_of_5_rule": true
+    },
+    "base_no_calendar": {
+      "val_wape": 0.533482,
+      "val_bias": 1.2714,
+      "diff_vs_base": -0.002255,
+      "folds_improved": "3/5",
+      "paired_diff_per_fold": [
+        0.002118,
+        -0.008569,
+        -0.00013,
+        -0.004868,
+        0.000174
+      ],
+      "meets_4_of_5_rule": false
+    },
+    "base+g3_no_calendar": {
+      "val_wape": 0.530099,
+      "val_bias": 2.2888,
+      "diff_vs_base": -0.005638,
+      "folds_improved": "4/5",
+      "paired_diff_per_fold": [
+        0.001207,
+        -0.01335,
+        -0.00403,
+        -0.007812,
+        -0.004202
+      ],
+      "meets_4_of_5_rule": true
+    },
+    "base+g1+g3_no_calendar": {
+      "val_wape": 0.530674,
+      "val_bias": 2.1566,
+      "diff_vs_base": -0.005063,
+      "folds_improved": "4/5",
+      "paired_diff_per_fold": [
+        0.002249,
+        -0.012582,
+        -0.004369,
+        -0.007705,
+        -0.002907
+      ],
+      "meets_4_of_5_rule": true
+    },
+    "all_groups_no_calendar": {
+      "val_wape": 0.531325,
+      "val_bias": 2.7047,
+      "diff_vs_base": -0.004412,
+      "folds_improved": "4/5",
+      "paired_diff_per_fold": [
+        0.001885,
+        -0.012152,
+        -0.00184,
+        -0.008238,
+        -0.001713
+      ],
+      "meets_4_of_5_rule": true
+    }
+  },
+  "hypotheses_and_warnings": {
+    "overfitting_caution": "VALIDATION OVERFITTING CAUTION: Across the 8 evaluated feature sets on the served model (random_forest_raw), the spread between the best set (WAPE 0.5301) and base (WAPE 0.5357) is only 0.0056 (0.56% WAPE). Selecting among 8 candidate configurations over just 5 cross-validation folds can easily overfit the validation partitions. These modest differences demonstrate that tree ensemble predictions are overwhelmingly driven by base lag and rolling features, with prior-year seasonality (g3) providing small, consistent incremental stabilization.",
+    "guest_share_4w": "HYPOTHESIS FLAG: 'guest_share_4w' is derived from missing CustomerID values in the UCI dataset. Missing CustomerID is not documented as a confirmed guest checkout and may represent wholesale walk-in purchases or cashier omission. It is retained strictly as an exploratory hypothesis.",
+    "unproven_groups": "Groups ['g2', 'g4'] are classified as UNPROVEN on the served model (random_forest_raw) because they failed to demonstrate consistent improvements under the 4-of-5 fold validation rule.",
+    "weeks_to_christmas": "DROPPED: 'weeks_to_christmas' showed no consistent gain (+0.0012 on Ridge, -0.0003 on RF, +0.0016 on LightGBM) and was dropped. In single-year datasets, countdown variables risk acting as surrogate time indices."
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "val": 0.8,
+  "test": 0.82,
+  "val_raw": 0.6544,
+  "val_calibrated": 0.8,
+  "test_raw": 0.6963,
+  "test_calibrated": 0.82,
+  "target_coverage": 0.8,
+  "residual_correction_offset": 32.19,
+  "pinball_loss_val": {
+    "p10_raw": 21.4189,
+    "p90_raw": 43.9703,
+    "p10_calibrated": 20.7269,
+    "p90_calibrated": 42.471
+  },
+  "pinball_loss_test": {
+    "p10_raw": 22.7225,
+    "p90_raw": 43.933,
+    "p10_calibrated": 22.2975,
+    "p90_calibrated": 43.1219
+  }
+}

@@ -1,148 +1,114 @@
-# PROMPTS_DEVOPS_QA.md: Environment, OS Setup, CI, Deployment, QA and Delivery
+# PROMPTS_DEVOPS_QA.md: Environment, CI, Deployment, Kaggle, QA and Delivery, version 3
 
-**Owner:** Member 4 leads, every member reviews. Tasks Q1 to Q3 run early (Day 1 to 3); Q4 to Q7 after the API works; Q8 to Q11 at the end.
-**Setup first:** Phase 0 in `PROMPTS.md`. **Mode:** Planning.
-
-**Closing check (add to any prompt that lacks it):**
-```
-Before you finish: run the commands you describe, show exact commands and output, list every file you created or changed, and list anything in the SRS sections I named that you did NOT implement. Do not claim success unless it actually ran.
-```
+**Owner:** Member 4 leads; every member reviews. Q1 to Q4 early; Q5 to Q8 after the API works; Q9 to Q12 at the end.
+**Setup:** paste the Windows preface and closing check from `PROMPTS_00_INDEX.md` into every prompt. Planning mode.
 
 ---
 
-## Part 1: Environment and operating systems
+## Part 1: Environment and automation
 
-## Task Q1: Cross-OS environment and setup scripts
-
-**SRS:** NFR-7, C-6 | **Output:** repeatable setup on Windows, macOS and Linux
-
+## Task Q1: Cross-OS setup (skip what already exists)
 ```
-Read docs/SRS.md NFR-7 and section 2.4. The four team members use different operating systems.
-
-1. Write scripts/setup.sh (macOS and Linux) and scripts/setup.ps1 (Windows PowerShell) that: check Python is 3.10 or 3.11 and stop with a clear message otherwise; create .venv; upgrade pip; install requirements.txt; print the installed versions of pandas, numpy, scikit-learn, lightgbm, fastapi; run pytest -q on the mock data. Do not require admin rights.
-2. Create .gitattributes forcing LF line endings for .py, .md, .json, .html, .js, .css, .sh and CRLF for .ps1, and marking .parquet, .joblib, .png as binary.
-3. Review all Python code for OS-specific problems: use pathlib everywhere, no hard-coded slashes or absolute paths, open text files with encoding="utf-8", no shell-only commands inside Python, no fork-only multiprocessing (set n_jobs conservatively). Fix what you find and list it.
-4. Add a README section "Troubleshooting" covering: LightGBM or pyarrow install failures on Windows (use the pre-built wheels and the exact pip command), "python not found" (py -3.11 on Windows), PowerShell execution policy for activating the venv, and Mac Apple Silicon architecture issues.
-5. Add scripts/doctor.py that prints OS, Python version, library versions compared with requirements.txt, whether data/raw/Online Retail.xlsx exists, whether data/processed and models artifacts exist, and a PASS or FAIL for each.
+Check whether scripts/setup.sh, scripts/setup.ps1, scripts/doctor.py and .gitattributes already exist. For anything missing: setup scripts that check Python 3.10 or 3.11, create the venv, install requirements.txt, print key library versions (pandas, numpy, scikit-learn, lightgbm, fastapi, sqlalchemy, holidays, httpx) and run pytest -q on the mock data; a .gitattributes forcing LF for text files and CRLF for .ps1; scripts/doctor.py printing OS, Python, library versions versus requirements.txt, and PASS or FAIL for the raw file, the processed tables, the model files and the database. Review code for OS-specific problems (pathlib, utf-8, no hard-coded separators). Add a README "Troubleshooting" section for Windows (py -3.11, PowerShell execution policy, LightGBM or pyarrow wheels).
 ```
-**Done when:** a teammate on a different OS runs the setup script and `python scripts/doctor.py` shows all PASS.
-
----
 
 ## Task Q2: Continuous integration
-
-**SRS:** section 10.3 (quality gates)
-
 ```
-Create .github/workflows/ci.yml that on every push and pull request: runs on ubuntu-latest and windows-latest with Python 3.10 and 3.11 (matrix); installs requirements.txt with pip caching; runs pytest -q against data/mock (the real data is not committed); runs python -m compileall src api; and fails on any error. Add a second job that runs a markdown link check or a simple lint (ruff, only error-level rules E9, F63, F7, F82) on src, api and tests. Add a status badge to README.md. Explain every step in comments. Do not add secrets.
+Create .github/workflows/ci.yml: on every push and pull request, matrix ubuntu-latest and windows-latest with Python 3.10 and 3.11; install requirements.txt with pip caching; run pytest -q against data/mock (real data is not committed; tests that need real files must skip with a clear message); run python -m compileall src api; run ruff on src, api and tests with only error-level rules (E9, F63, F7, F82). Add a status badge to README.md. Explain each step in comments. No secrets.
 ```
-**Done when:** a pull request shows green checks on both operating systems.
 
----
-
-## Task Q3: Pre-merge review automation
-
+## Task Q3: Pre-merge checks
 ```
-Create .agents/workflows entries (or documented prompts in docs/REVIEW_GUIDE.md if workflows are unavailable) named pre-merge and contract-check:
-- pre-merge: run /verify, then /leakage-review on changed files in src/, then /contract-check, then print a table: check, result, details. The merge is blocked unless all rows pass.
-- contract-check: compare data/processed files and the running API against CONTRACTS.md and SRS section 7 and report every mismatch.
-Also create a pull request template (.github/pull_request_template.md) with checkboxes: tests pass, contract unchanged or CHANGE_REQUESTS updated, no data leakage, docs updated, reviewed by a teammate.
+Create the pre-merge and contract-check workflows (or docs/REVIEW_GUIDE.md if workflows are unavailable): pre-merge runs /verify, /leakage-review on changed files in src/, /contract-check against CONTRACTS.md and the addendum, then prints a table (check, result, details). Add .github/pull_request_template.md with checkboxes: tests pass, contracts unchanged or CHANGE_REQUESTS updated, no data leakage, docs updated, reviewed by a teammate.
+```
+
+## Task Q4: End-to-end smoke test
+```
+Write scripts/smoke.py taking a base URL (default http://localhost:8000) that checks: GET /api/health ok; /api/disclaimer contains "simulated"; /api/products has 100 items ordered by total_units; /api/forecast/{first id} has 52 history entries with exactly one null and a forecast for 2011-12-05 with p10 <= forecast <= p90; /api/forecast/NOPE is 404; POST /api/predict works; POST /api/predict/custom works and rejects 7 values with 422; POST /api/risk counts add up to 100; lead_time_weeks 9 gives 422; /api/simulate works; /api/sensitivity returns 12 rows; /api/metrics includes a baseline; /api/error-analysis and /api/intelligence respond; a write without X-API-Key gives 401 and with the key succeeds (create then delete an order); /api/logs shows the requests just made; GET / returns HTML containing "Shelfwatch"; no response contains "CustomerID". Print PASS or FAIL per check and exit non-zero on any failure. It must work against a local server and a public URL.
 ```
 
 ---
 
-## Part 2: Integration, deployment and release
+## Part 2: Deployment and Kaggle
 
-## Task Q4: End-to-end smoke test script
-
-**SRS:** section 10.1 (system test) | **Output:** `scripts/smoke.py`
-
-```
-  The closure week 2010-12-27 has no row in weekly_demand. In /forecast history, include it as an entry with units null (so the history has 52 weeks) and draw the chart line with a gap there. Smoke tests expect 52 history entries and one null.
-
-Write scripts/smoke.py that takes a base URL (default http://localhost:8000) and checks: GET /health is ok; GET /disclaimer text contains "simulated"; GET /products returns 100 items ordered by total_units descending; GET /forecast/{first_product_id} returns 52 history rows, 8 test predictions and a forecast for 2011-12-05; GET /forecast/NOPE returns 404; POST /risk with defaults returns summary counts that add up to 100; POST /risk with lead_time_weeks 9 returns 422; POST /sensitivity returns 12 rows; GET /metrics includes a baseline; GET /error-analysis has segments, weeks and products; GET / returns HTML containing "Shelfwatch"; no response contains "CustomerID". Print a table of checks with PASS or FAIL and exit non-zero on any failure. It must work against a local server and a public URL.
-```
-**Done when:** all checks PASS locally.
-
-## Task Q5: Docker and cloud configuration (one service)
-
-**SRS:** section 11, Option A
+## Task Q5: Local deployment, ngrok and Postman (mentor's flow)
+**SRS:** 11.1 to 11.6
 
 ```
-Read docs/SRS.md section 11. Prepare Option A, where FastAPI serves both the API and the dashboard from one app.
-
-1. Dockerfile: python:3.11-slim; set PYTHONUNBUFFERED; install requirements.txt (pinned); copy only api/, src/, dashboard/ (excluding dashboard/prototype and dashboard/mock), models/ and data/processed/; run as a non-root user; honor the PORT environment variable; CMD uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}; HEALTHCHECK calling /health.
-2. .dockerignore excluding data/raw, notebooks, reports, tests, .git, .venv, __pycache__, *.xlsx.
-3. Report the image size and the size of each copied folder; the artifacts must total under 50 MB (NFR-10).
-4. Confirm the container starts with no data/raw folder and serves /health, /docs and the dashboard.
-5. render.yaml (or exact dashboard settings documented in README) for Render: runtime Docker, health check path /health, environment variable ALLOWED_ORIGINS optional. Document the equivalent for a Hugging Face Docker Space (port 7860 handling).
-6. README section "Deploy" with numbered steps and what to click.
-
-Do not deploy anything yourself. Tell me exactly what I must do in the hosting service.
+Read docs/SRS.md section 11, docs/DEPLOY_LOCAL_NGROK.md and postman/Shelfwatch.postman_collection.json.
+1. Verify scripts/start_server.bat and scripts/start_ngrok.bat run from a clean terminal on Windows: they activate the venv, load .env, start uvicorn on 8000 (and ngrok http 8000); fix paths if needed.
+2. Write scripts/doctor.py: checks Python version, pinned packages, .env present, MySQL reachable, every table in sql/schema.sql exists with rows where expected, models/ files present, GET /health returns ok. Exit code 1 on any failure with a plain message.
+3. Run the Postman collection with newman (or describe each request for manual run) against the LOCAL environment and then against the PUBLIC environment (ngrok URL pasted into the environment); every test must pass; save a screenshot or report in docs/screens/.
+4. Check that header ngrok-skip-browser-warning is sent by the collection and the pages; check CORS for the ngrok origin.
+5. README "Deploy" with numbered steps; state clearly: the public URL works only while the laptop, MySQL, FastAPI and ngrok are all running, the free ngrok URL changes on restart, and a mysqldump backup (scripts/backup_db.bat) is kept on a second laptop.
+Do not start long-running servers yourself in a way that blocks; give me the exact commands.
 ```
-**Done when:** `docker build` and `docker run -p 8000:8000` work locally (or the agent states clearly that Docker is not installed and provides the commands).
 
-## Task Q6: Hello-world deploy by Day 8
-
-**SRS:** section 11.3 recommendation
-
+## Task Q6: Early smoke test of the public URL
 ```
-Create a minimal deployment test: a branch deploy-smoke containing a tiny FastAPI app (api/hello.py) that serves GET /health and a static index page, using the same Dockerfile pattern. Give me the exact steps to deploy it on Render (or Hugging Face Spaces), and a checklist to confirm the public URL works. Then give me the steps to switch the service to the real app (api.main:app) once ready. The goal is to discover free-tier or port problems early.
+Do this as soon as B9 exists: start the minimal API, run ngrok, call GET /health from Postman and from a phone on mobile data, and record the steps and any firewall or antivirus prompt in docs/DEPLOY_LOCAL_NGROK.md. Then repeat with the full app after B21.
 ```
-**Done when:** a public `/health` URL responds.
 
-## Task Q7: Release checklist and dry run
-
-**SRS:** section 11.4, Appendix C
+## Task Q7: Prepare the Kaggle publication
+**SRS:** 11.5, FR-K-1 to FR-K-5
 
 ```
-Create docs/RELEASE_CHECKLIST.md from SRS section 11.4 and Appendix C with checkboxes. Then do a dry run in a fresh clone in a temporary folder: create the venv with scripts/setup.sh, run python -m src.data_prep (skip if the raw file is unavailable and say so), python -m src.train, pytest -q, uvicorn, then python scripts/smoke.py. Tick only what you actually verified and write the evidence (command and result) next to each ticked line. List everything that failed or was skipped.
+Read docs/SRS.md section 11.5. Prepare, but do NOT upload, the Kaggle material in kaggle/:
+1. kaggle/dataset/: the processed files only (weekly_demand, closed_weeks, calendar_weekly, prior_year_weekly, enrichment_weekly, product_intelligence, basket_pairs, product_segments, plus a small README), a dataset-metadata.json draft with title, subtitle, description, license notes and the UCI credit and link to the raw data (the raw Excel is linked, not republished), and a DATA_CARD.md describing every file and column.
+2. kaggle/notebook/: shelfwatch_modeling.py (from task M13) converted to a notebook-friendly script or .ipynb, reading one DATA_DIR variable; a short markdown intro stating the problem, the data, the method and the honest results.
+3. kaggle/model/: best_model.joblib, q10.joblib, q90.joblib, feature_list.json, config.json, MODEL_CARD.md (copy from docs).
+4. kaggle/PUBLISH_STEPS.md: step-by-step instructions for the Kaggle website (create the dataset, create and run the notebook with the dataset attached, make it public, create the model and upload files, add the model card), what to copy back into the environment variables KAGGLE_*_URL, and a checklist to confirm the notebook runs top to bottom on Kaggle.
+Include one paragraph explaining why Kaggle is used for publishing and reproducing and not for the live URL (a notebook cannot accept incoming connections, sessions end after hours, tunnel URLs change).
 ```
-**Done when:** the dry run passes or every failure is listed.
+**Done when:** `kaggle/` is complete and you can follow `PUBLISH_STEPS.md` on kaggle.com. After uploading, paste the three URLs into the deployment environment.
+
+## Task Q8: Release checklist and dry run
+```
+Create docs/RELEASE_CHECKLIST.md from SRS 11.4 and Appendix C with checkboxes. Do a dry run in a fresh clone in a temporary folder: create the venv with the setup script, run the pipeline commands from SRS 14.4 that can run (skip any that need the raw files and say so), pytest -q, start uvicorn, run python scripts/smoke.py and python scripts/api_client.py demo. Tick only what you verified, with the command and result next to each ticked line. List everything that failed or was skipped.
+```
 
 ---
 
-## Part 3: Final QA, report and viva
+## Part 3: Review, report and viva
 
-## Task Q8: Whole-project review and traceability
-
+## Task Q9: Whole-project review and traceability
 ```
-Act as a strict examiner and senior engineer. Read docs/SRS.md and review the whole repository against it. Write docs/REVIEW.md with: (1) a traceability table mapping every FR and NFR to the implementing file and the verifying test, marking any requirement with no implementation or no test; (2) deviations from the SRS with severity; (3) data-leakage risks (run /leakage-review on src/features.py and src/train.py); (4) every place where the simulated-inventory disclaimer is missing or weak; (5) anything in code, dashboard text or documentation that overstates what the results show. Do not edit code; only report.
-```
-
-## Task Q9: Report draft
-
-```
-Using docs/SRS.md, docs/DATA_NOTES.md, docs/MODEL_CARD.md, cleaning_log.csv, metrics.csv, error_analysis.csv, the sensitivity results and the figures in reports/figures/, draft docs/REPORT.md for college submission with sections: Problem and objectives; Dataset and cleaning (real row counts); EDA findings; Feature engineering (explain shift-before-rolling and the closed-week rule); Models and evaluation (baselines versus ML with real numbers); Forecast-error analysis; Inventory simulation (every assumption plus the disclaimer); System design (API and dashboard); Testing; Deployment; Limitations (one year of data, level shift, intermittent demand, simulated stock); Future work. Use only numbers that exist in project files; write TODO instead of inventing any number. Cite figure file names where figures belong.
+Act as a strict examiner and senior engineer. Read docs/SRS.md (version 3) and review the repository. Write docs/REVIEW.md with: (1) a traceability table mapping every FR and NFR to its implementing file and verifying test, marking any with none; (2) a second table mapping each row of SRS Appendix E (the mentor requirements) to evidence in the repository; (3) deviations from the SRS with severity; (4) leakage risks (run /leakage-review on src/features.py, src/enrichment.py and src/train.py); (5) every place the simulated-inventory disclaimer is missing or weak; (6) any page, endpoint or text that addresses a stakeholder other than the Retail Inventory and Replenishment Manager, or that is not tied to a step of their weekly routine; (7) any text in the code, pages or docs that overstates what the results show or claims uniqueness or company usage without a source. Do not edit code; only report.
 ```
 
-## Task Q10: Slides
-
+## Task Q10: Report
 ```
-From docs/REPORT.md create docs/SLIDES.md with at most 12 slides. Each slide: a title, 3 to 5 short bullets, the figure to show (file name), and a speaker note of 2 sentences. Include one slide on the Shelfwatch dashboard (what the shelf wall shows) and one slide on honest limitations. Order: problem, data, method, results, error analysis, inventory rule, dashboard, deployment, limitations, conclusion.
+Using docs/SRS.md, docs/DATA_NOTES.md, docs/MODEL_CARD.md, docs/E0_FINDINGS.md, docs/M5_DIAGNOSIS.md, the cleaning log, metrics.csv, ablation.json, interval_coverage.json, error_analysis.csv, the sensitivity results and the figures in reports/figures/, draft docs/REPORT.md with sections: Problem and objectives; The primary stakeholder: the Retail Inventory and Replenishment Manager (persona, weekly routine, decisions, success measures; say plainly that the persona is assumed; add a 'Persona validation' paragraph if anyone was interviewed) and real-life use; the replenishment-policy backtest results as the evidence of benefit; Dataset, cleaning and enrichment (real row counts; the closure week; the zero-fill decision; Online Retail II and the holidays package with citations); EDA and product intelligence findings (state class distributions honestly); Feature engineering (shift before rolling, feature groups); How we train and test (chronological split, week-based validation, why not random, why the test period is the last 8 weeks); Models, tuning and the feature-group ablation (real numbers, including what did NOT help); Prediction intervals and their measured coverage; Forecast-error analysis; Inventory simulation, user-entered stock and replenishment advice (every assumption and the disclaimer); System design (database, CRUD, middleware, Python client, five pages); Testing; Deployment and Kaggle (what is live and what is published; the free-tier reset); Limitations; Future work. Use only numbers from project files; write TODO instead of inventing any number.
 ```
 
-## Task Q11: Viva rehearsal
-
+## Task Q11: Slides and the mentor demo script
 ```
-Act as a college project examiner. Ask me 12 hard questions one at a time, covering: why weekly granularity; data leakage and how we prevented it; shift before rolling; the chronological split; why WAPE and not MAPE; the closure week; why tree models can under-forecast the October to November level; how sigma_error is derived; safety stock and reorder point in plain words; why inventory is simulated and what that means for conclusions; how the API and the dashboard connect; why a static dashboard served by FastAPI. After each of my answers grade it out of 10, say what a stronger answer would include, then ask the next question. Wait for my answer each time. At the end give a score summary and my three weakest topics.
+From docs/REPORT.md create docs/SLIDES.md with at most 14 slides (title, 3 to 5 bullets, figure file name, 2-sentence speaker note): problem and stakeholders, data and enrichment, method, results including what did not help, intervals, error analysis, inventory rule and advice, product intelligence, the five pages, backend (database, CRUD, middleware, client), deployment and Kaggle, limitations, conclusion.
+Also write docs/DEMO_SCRIPT.md: a 6-minute live demo told from the manager's point of view (open with one sentence on who they are and what they must decide each week), in order: open the public URL and show /api/health and /docs; the shelf and a slider; the Predict page for a product and for typed-in sales; the what-if simulator; create and approve an order on the Inventory page and show the risk change; the Analysis board request log showing the middleware at work; the Kaggle dataset, notebook and model pages. For each step write what to say, what to click, and what to do if it fails (a fallback screenshot name).
+```
+
+## Task Q12: Viva rehearsal
+```
+Act as a strict college examiner. Ask me 15 hard questions one at a time and wait for my answer each time. Cover: who the single stakeholder is, why we chose them, which features serve each step of their weekly routine, what we deliberately did not build for other roles, and what the persona assumption rests on; why weekly granularity; how training and testing are split and why not random; data leakage and shift before rolling; the closure week and the zero-fill decision; why WAPE and not MAPE; why the moving average beat default LightGBM and what we did about it; what each new feature group is, why it might help, and how we tested it; prior-year features and their limits; prediction intervals and coverage; safety stock, reorder point and stockout probability in plain words; why inventory is simulated and what changes when a user enters stock; the database tables and each CRUD status code; what each middleware does; how Python calls this API; how JavaScript fetch and events work (ask me to trace a click on a bin); why Kaggle is for publishing and ngrok for the live URL; the MySQL reset (scripts/reset_demo.py) on free hosting. After each answer grade it out of 10, say what a stronger answer includes, then ask the next question. At the end give my score and my three weakest topics.
 ```
 
 ---
 
 ## Appendix: Recovery prompts
-
 **Agent drifted from the SRS**
 ```
-Stop. Compare what you just did with docs/SRS.md section [X]. List each deviation, undo the deviations, and redo the work to match the SRS. If you believe the SRS is wrong, say so and wait.
+Stop. Compare what you just did with docs/SRS.md section [X]. List each deviation, undo it, and redo the work to match the SRS. If you believe the SRS is wrong, say so and wait.
+```
+**Environment broken**
+```
+Run python scripts/doctor.py and show the output. Identify the first failing check, explain the cause in two sentences, propose the smallest fix, and apply it only after I confirm. Do not delete the virtual environment unless I say so.
+```
+**CI fails but local passes**
+```
+Here is the failing CI log: [paste]. Reproduce it locally with the same Python version if possible, explain the cause, fix it and show the passing run. Check first: files that exist locally but are git-ignored, absolute paths, line endings, unpinned versions, tests that need real data.
 ```
 
-**Environment broken on one OS**
+## Task Q13: Evaluation rehearsal (added in version 3.2)
 ```
-Run python scripts/doctor.py and show the output. Identify the first failing check, explain the cause in two sentences, propose the smallest fix for [Windows | macOS | Linux], and apply it only after I confirm. Do not delete the virtual environment unless I say so.
-```
-
-**CI passes locally but fails in GitHub Actions**
-```
-Here is the failing CI log: [paste]. Reproduce the failure locally using the same Python version and operating system settings if possible, explain the cause, fix it, and show the passing run. Typical causes to check first: files that exist locally but are git-ignored, absolute paths, line endings, and missing pinned versions.
+Read docs/EVALUATION_PLAN.md. Run a full 150-minute rehearsal with the four roles: pre-flight (doctor.py, mysqldump, reset_demo.py, ngrok URL pasted into Postman), then the segments in order, with one member playing a faculty member asking the likely questions. Also run a 30-minute soak test: call /api/risk and /api/predict every 10 seconds through the ngrok URL and confirm no errors and no memory growth. Record every failure and fix it. Output: a short checklist of what to do in the first five minutes of the real evaluation and a fallback table (laptop sleeps, ngrok URL changes, MySQL not running, internet down).
 ```

@@ -189,13 +189,23 @@ def build_mock_next_week_forecast(
         val_errors = (val_group["predicted"] - val_group["actual"]).to_numpy(dtype=float)
         sigma_error = float(np.std(val_errors, ddof=1)) if len(val_errors) > 1 else 10.0
 
+        p10 = round(float(max(0.0, forecast_weekly - 1.28 * sigma_error)), 2)
+        p90 = round(float(forecast_weekly + 1.28 * sigma_error), 2)
+        p10 = min(p10, forecast_weekly)
+        p90 = max(p90, forecast_weekly)
+
+        last_price = float(group.sort_values("week_start")["avg_price"].iloc[-1])
+
         rows.append(
             {
                 "product_id": str(product_id),
                 "week_start": FORECAST_TARGET_WEEK,
                 "forecast_weekly": forecast_weekly,
+                "forecast_p10": p10,
+                "forecast_p90": p90,
                 "sigma_error": round(sigma_error, 2),
                 "avg_weekly_units_train": round(avg_train, 2),
+                "last_avg_price": round(last_price, 2),
             }
         )
 
@@ -205,10 +215,229 @@ def build_mock_next_week_forecast(
             "product_id",
             "week_start",
             "forecast_weekly",
+            "forecast_p10",
+            "forecast_p90",
             "sigma_error",
             "avg_weekly_units_train",
+            "last_avg_price",
         ],
     )
+
+
+def build_mock_enrichment_weekly(
+    weekly_df: pd.DataFrame, rng: np.random.Generator
+) -> pd.DataFrame:
+    """Create enrichment_weekly DataFrame conforming to contract C8."""
+    rows: list[dict[str, Any]] = []
+    for row in weekly_df.itertuples(index=False):
+        gross = int(row.units)
+        cancelled = int(max(0, round(gross * float(rng.uniform(0.01, 0.08)))))
+        export_units = int(max(0, round(gross * float(rng.uniform(0.05, 0.20)))))
+        guest_units = int(max(0, round(gross * float(rng.uniform(0.10, 0.30)))))
+        export_units = min(export_units, gross)
+        guest_units = min(guest_units, gross)
+        rows.append(
+            {
+                "product_id": str(row.product_id),
+                "week_start": pd.Timestamp(row.week_start),
+                "gross_units": gross,
+                "cancelled_units": cancelled,
+                "export_units": export_units,
+                "guest_units": guest_units,
+            }
+        )
+
+    df = pd.DataFrame(rows)
+    df["gross_units"] = df["gross_units"].astype("int64")
+    df["cancelled_units"] = df["cancelled_units"].astype("int64")
+    df["export_units"] = df["export_units"].astype("int64")
+    df["guest_units"] = df["guest_units"].astype("int64")
+    return df
+
+
+def build_mock_calendar_weekly() -> pd.DataFrame:
+    """Create calendar_weekly DataFrame conforming to contract C9 (105 weeks)."""
+    weeks = pd.date_range(start="2009-12-07", end="2011-12-05", freq="W-MON")
+    # Verified UK bank holiday Mondays or weeks with bank holidays in 2009-12-07 to 2011-12-05
+    # Key dates: 2011-04-22 (Good Fri), 2011-04-25 (Easter Mon), 2011-04-29 (Royal Wedding), 2011-05-02 (Early May)
+    holiday_map: dict[str, int] = {
+        "2009-12-28": 2,  # Christmas/Boxing Day substitute
+        "2010-01-04": 1,  # New Year substitute
+        "2010-04-05": 1,  # Easter Monday
+        "2010-05-03": 1,  # Early May
+        "2010-05-31": 1,  # Spring
+        "2010-08-30": 1,  # Summer
+        "2010-12-27": 2,  # Christmas/Boxing Day substitute
+        "2011-01-03": 1,  # New Year substitute
+        "2011-04-18": 1,  # Good Friday 2011-04-22
+        "2011-04-25": 2,  # Easter Monday 2011-04-25 + Royal Wedding 2011-04-29
+        "2011-05-02": 1,  # Early May bank holiday 2011-05-02
+        "2011-05-30": 1,  # Spring bank holiday
+        "2011-08-29": 1,  # Summer bank holiday
+    }
+
+    rows: list[dict[str, Any]] = []
+    for w in weeks:
+        w_str = w.strftime("%Y-%m-%d")
+        h_count = holiday_map.get(w_str, 0)
+        # 6 trading days (Mon-Fri + Sun, no Saturday sales) minus bank holidays
+        trading_days = max(1, 6 - h_count)
+
+        # Christmas week contains Dec 24, 25, or 26
+        week_days = pd.date_range(start=w, periods=7)
+        is_xmas = 1 if any((d.month == 12 and d.day in (24, 25, 26)) for d in week_days) else 0
+
+        rows.append(
+            {
+                "week_start": w_str,
+                "uk_bank_holiday_count": int(h_count),
+                "trading_days_expected": int(trading_days),
+                "is_christmas_week": int(is_xmas),
+            }
+        )
+
+    df = pd.DataFrame(rows)
+    df["uk_bank_holiday_count"] = df["uk_bank_holiday_count"].astype("int64")
+    df["trading_days_expected"] = df["trading_days_expected"].astype("int64")
+    df["is_christmas_week"] = df["is_christmas_week"].astype("int64")
+    return df
+
+
+def build_mock_prior_year_weekly(
+    weekly_df: pd.DataFrame, rng: np.random.Generator
+) -> pd.DataFrame:
+    """Create prior_year_weekly DataFrame conforming to contract C10."""
+    # Prior year weeks before 2010-12-06, excluding closure week 2009-12-28
+    prior_weeks = [
+        w for w in pd.date_range(start="2010-01-04", end="2010-05-17", freq="W-MON")
+        if w.strftime("%Y-%m-%d") != "2009-12-28"
+    ]
+    # 9 out of 10 products have prior-year rows (SKU 22629 is new with 0 prior rows)
+    eligible_products = [p for p in PRODUCTS if p[0] != "22629"]
+
+    rows: list[dict[str, Any]] = []
+    for product_id, _, base_units, _ in eligible_products:
+        for w in prior_weeks:
+            raw_units = base_units * 0.9 + rng.normal(0.0, base_units * 0.15)
+            units = int(max(0, round(raw_units)))
+            orders = int(max(1, round(units / 10.0))) if units > 0 else 0
+            rows.append(
+                {
+                    "product_id": str(product_id),
+                    "week_start": pd.Timestamp(w),
+                    "units": units,
+                    "orders": orders,
+                }
+            )
+
+    df = pd.DataFrame(rows).sort_values(["product_id", "week_start"]).reset_index(drop=True)
+    df["units"] = df["units"].astype("int64")
+    df["orders"] = df["orders"].astype("int64")
+    return df
+
+
+def build_mock_product_intelligence(
+    weekly_df: pd.DataFrame, rng: np.random.Generator
+) -> pd.DataFrame:
+    """Create product_intelligence DataFrame conforming to contract C11."""
+    # Syntetos-Boylan quadrant combinations across the 10 products
+    # smooth: ADI < 1.32 & CV2 < 0.49
+    # erratic: ADI < 1.32 & CV2 >= 0.49
+    # intermittent: ADI >= 1.32 & CV2 < 0.49
+    # lumpy: ADI >= 1.32 & CV2 >= 0.49
+    adi_vals = [1.05, 1.10, 1.15, 1.20, 1.25, 1.35, 1.40, 1.05, 1.12, 1.38]
+    cv2_vals = [0.25, 0.35, 0.45, 0.55, 0.30, 0.60, 0.20, 0.40, 0.50, 0.65]
+    abc_vals = ["A", "A", "A", "A", "B", "B", "B", "C", "C", "C"]
+    xyz_vals = ["X", "X", "Y", "Y", "X", "Z", "X", "Y", "Z", "Z"]
+    stages = ["mature", "growing", "mature", "mature", "growing", "mature", "mature", "declining", "mature", "new"]
+    weeks_inactive = [0, 0, 0, 0, 0, 0, 0, 1, 0, 0]
+
+    desc_map = dict(weekly_df.drop_duplicates("product_id").set_index("product_id")["description"])
+
+    # Compute mock revenue shares
+    rev_weights = [p[2] * p[3] for p in PRODUCTS]
+    tot_rev = sum(rev_weights)
+    rev_shares = [round(w / tot_rev, 4) for w in rev_weights]
+    rev_shares[-1] = round(1.0 - sum(rev_shares[:-1]), 4)
+
+    rows: list[dict[str, Any]] = []
+    for idx, (product_id, _, _, _) in enumerate(PRODUCTS):
+        adi = float(adi_vals[idx])
+        cv2 = float(cv2_vals[idx])
+        if adi < 1.32 and cv2 < 0.49:
+            pattern = "smooth"
+        elif adi < 1.32 and cv2 >= 0.49:
+            pattern = "erratic"
+        elif adi >= 1.32 and cv2 < 0.49:
+            pattern = "intermittent"
+        else:
+            pattern = "lumpy"
+
+        ret_rate = round(float(rng.uniform(0.015, 0.055)), 4)
+        exp_share = round(float(rng.uniform(0.08, 0.22)), 4)
+        top3_share = round(float(rng.uniform(0.20, 0.45)), 4)
+        known_cov = round(float(rng.uniform(0.70, 0.85)), 4)
+
+        rows.append(
+            {
+                "product_id": str(product_id),
+                "description": str(desc_map.get(product_id, "")),
+                "adi": adi,
+                "cv2": cv2,
+                "pattern_class": pattern,
+                "abc_class": abc_vals[idx],
+                "xyz_class": xyz_vals[idx],
+                "lifecycle_stage": stages[idx],
+                "weeks_since_last_sale": int(weeks_inactive[idx]),
+                "return_rate": ret_rate,
+                "export_share": exp_share,
+                "top3_customer_share": top3_share,
+                "known_customer_coverage": known_cov,
+                "revenue_share": float(rev_shares[idx]),
+            }
+        )
+
+    df = pd.DataFrame(rows)
+    df["weeks_since_last_sale"] = df["weeks_since_last_sale"].astype("int64")
+    return df
+
+
+def build_mock_basket_pairs(
+    weekly_df: pd.DataFrame, rng: np.random.Generator
+) -> pd.DataFrame:
+    """Create basket_pairs DataFrame conforming to contract C12."""
+    desc_map = dict(weekly_df.drop_duplicates("product_id").set_index("product_id")["description"])
+    # Realistic pairs among mock products
+    pair_defs = [
+        ("85123A", "85099B", 65, 0.38, 2.15),
+        ("85123A", "22423", 42, 0.28, 1.85),
+        ("85099B", "20725", 78, 0.45, 3.10),
+        ("85099B", "85123A", 65, 0.35, 2.15),
+        ("21212", "22197", 52, 0.42, 2.60),
+        ("22197", "21212", 52, 0.40, 2.60),
+        ("22423", "47566", 38, 0.32, 2.20),
+        ("47566", "22423", 38, 0.30, 2.20),
+        ("84879", "85123A", 35, 0.26, 1.75),
+        ("20725", "85099B", 78, 0.52, 3.10),
+    ]
+    rows: list[dict[str, Any]] = []
+    for pid, cid, n_inv, conf, lift in pair_defs:
+        rows.append(
+            {
+                "product_id": str(pid),
+                "companion_id": str(cid),
+                "companion_description": str(desc_map.get(cid, "")),
+                "n_invoices": int(n_inv),
+                "confidence": float(conf),
+                "lift": float(lift),
+            }
+        )
+
+    df = pd.DataFrame(rows)
+    df["n_invoices"] = df["n_invoices"].astype("int64")
+    df["confidence"] = df["confidence"].astype("float64")
+    df["lift"] = df["lift"].astype("float64")
+    return df
 
 
 def _compute_mock_risk(
@@ -367,12 +596,22 @@ def generate_mocks(output_dir: Path = MOCK_DIR) -> None:
     preds_df = build_mock_predictions(weekly_df, rng)
     metrics_df = build_mock_metrics(preds_df)
     forecast_df = build_mock_next_week_forecast(weekly_df, preds_df, rng)
+    enrichment_df = build_mock_enrichment_weekly(weekly_df, rng)
+    calendar_df = build_mock_calendar_weekly()
+    prior_year_df = build_mock_prior_year_weekly(weekly_df, rng)
+    intelligence_df = build_mock_product_intelligence(weekly_df, rng)
+    basket_df = build_mock_basket_pairs(weekly_df, rng)
 
     weekly_df.to_parquet(output_dir / "weekly_demand.parquet", index=False)
     closed_df.to_csv(output_dir / "closed_weeks.csv", index=False)
     preds_df.to_csv(output_dir / "predictions.csv", index=False)
     metrics_df.to_csv(output_dir / "metrics.csv", index=False)
     forecast_df.to_csv(output_dir / "next_week_forecast.csv", index=False)
+    enrichment_df.to_parquet(output_dir / "enrichment_weekly.parquet", index=False)
+    calendar_df.to_csv(output_dir / "calendar_weekly.csv", index=False)
+    prior_year_df.to_parquet(output_dir / "prior_year_weekly.parquet", index=False)
+    intelligence_df.to_csv(output_dir / "product_intelligence.csv", index=False)
+    basket_df.to_csv(output_dir / "basket_pairs.csv", index=False)
 
     # Dashboard mock JSON files (matching CONTRACTS.md C7 and SRS section 7)
     all_weeks = sorted(weekly_df["week_start"].unique())

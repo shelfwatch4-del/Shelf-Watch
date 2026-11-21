@@ -1,0 +1,61 @@
+feature_groups,model_name,val_wape,val_bias,note
+base (raw),random_forest,0.535737,2.2483,Base 15 features
+base+g1 (raw),random_forest,0.535721,2.2164,"+ Derived behavior (order size, trend ratio, price index, cv_4, zero streak)"
+base+g2 (raw),random_forest,0.535544,2.734,"+ Calendar UK (bank holidays, trading days)"
+base+g3 (raw),random_forest,0.531819,2.7517,"+ Prior year II (5w yoy mean, seasonal index, available flag)"
+base+g4 (raw),random_forest,0.536023,2.0638,"+ Transaction signals (return rate, export share, guest share)"
+base+g1+g3 (raw),random_forest,0.532362,2.792,+ Derived behavior & Prior year II
+all_groups (raw),random_forest,0.53278,3.1792,All groups (base + g1 + g2 + g3 + g4)
+base_no_calendar (raw),random_forest,0.533482,1.2714,Base without week_of_year and month
+base+g3_no_calendar (raw),random_forest,0.530099,2.2888,Base + g3 without week_of_year and month
+base+g1+g3_no_calendar (raw),random_forest,0.530674,2.1566,Base + g1 + g3 without week_of_year and month
+all_groups_no_calendar (raw),random_forest,0.531325,2.7047,All groups without week_of_year and month
+base_plus_christmas (raw),random_forest,0.535729,2.2468,Base plus weeks_to_christmas (tested for time index risk)
+base (raw),lightgbm,0.545565,2.5944,Base 15 features
+base+g1 (raw),lightgbm,0.542426,0.6182,"+ Derived behavior (order size, trend ratio, price index, cv_4, zero streak)"
+base+g2 (raw),lightgbm,0.544425,3.5997,"+ Calendar UK (bank holidays, trading days)"
+base+g3 (raw),lightgbm,0.538139,3.0239,"+ Prior year II (5w yoy mean, seasonal index, available flag)"
+base+g4 (raw),lightgbm,0.544007,1.4449,"+ Transaction signals (return rate, export share, guest share)"
+base+g1+g3 (raw),lightgbm,0.536638,1.5549,+ Derived behavior & Prior year II
+all_groups (raw),lightgbm,0.532538,1.9254,All groups (base + g1 + g2 + g3 + g4)
+base_no_calendar (raw),lightgbm,0.536901,-0.9099,Base without week_of_year and month
+base+g3_no_calendar (raw),lightgbm,0.530718,-0.1393,Base + g3 without week_of_year and month
+base+g1+g3_no_calendar (raw),lightgbm,0.530582,-0.5425,Base + g1 + g3 without week_of_year and month
+all_groups_no_calendar (raw),lightgbm,0.528564,2.3229,All groups without week_of_year and month
+base_plus_christmas (raw),lightgbm,0.547176,2.6303,Base plus weeks_to_christmas (tested for time index risk)
+base (scale_aware),lightgbm,0.641637,34.8721,Base 15 features
+base+g1 (scale_aware),lightgbm,0.609654,26.8965,"+ Derived behavior (order size, trend ratio, price index, cv_4, zero streak)"
+base+g2 (scale_aware),lightgbm,0.626654,35.0778,"+ Calendar UK (bank holidays, trading days)"
+base+g3 (scale_aware),lightgbm,0.631843,36.8944,"+ Prior year II (5w yoy mean, seasonal index, available flag)"
+base+g4 (scale_aware),lightgbm,0.611078,29.075,"+ Transaction signals (return rate, export share, guest share)"
+base+g1+g3 (scale_aware),lightgbm,0.608503,28.4484,+ Derived behavior & Prior year II
+all_groups (scale_aware),lightgbm,0.608025,30.9419,All groups (base + g1 + g2 + g3 + g4)
+base_no_calendar (scale_aware),lightgbm,0.56552,16.9119,Base without week_of_year and month
+base+g3_no_calendar (scale_aware),lightgbm,0.563582,16.7352,Base + g3 without week_of_year and month
+base+g1+g3_no_calendar (scale_aware),lightgbm,0.578938,17.2656,Base + g1 + g3 without week_of_year and month
+all_groups_no_calendar (scale_aware),lightgbm,0.579707,21.3726,All groups without week_of_year and month
+base_plus_christmas (scale_aware),lightgbm,0.641298,34.6867,Base plus weeks_to_christmas (tested for time index risk)
+base (raw),ridge,0.538733,5.3193,Base 15 features
+base+g1 (raw),ridge,0.539269,6.3775,"+ Derived behavior (order size, trend ratio, price index, cv_4, zero streak)"
+base+g2 (raw),ridge,0.549908,16.3396,"+ Calendar UK (bank holidays, trading days)"
+base+g3 (raw),ridge,0.533977,6.6761,"+ Prior year II (5w yoy mean, seasonal index, available flag)"
+base+g4 (raw),ridge,0.537578,4.971,"+ Transaction signals (return rate, export share, guest share)"
+base+g1+g3 (raw),ridge,0.534384,7.6968,+ Derived behavior & Prior year II
+all_groups (raw),ridge,0.54399,18.3419,All groups (base + g1 + g2 + g3 + g4)
+base_no_calendar (raw),ridge,0.532921,1.5205,Base without week_of_year and month
+base+g3_no_calendar (raw),ridge,0.52797,2.9087,Base + g3 without week_of_year and month
+base+g1+g3_no_calendar (raw),ridge,0.52681,2.5362,Base + g1 + g3 without week_of_year and month
+all_groups_no_calendar (raw),ridge,0.527324,7.8973,All groups without week_of_year and month
+base_plus_christmas (raw),ridge,0.539967,6.1053,Base plus weeks_to_christmas (tested for time index risk)
+base (scale_aware),ridge,1.123066,177.2317,Base 15 features
+base+g1 (scale_aware),ridge,0.844315,92.7689,"+ Derived behavior (order size, trend ratio, price index, cv_4, zero streak)"
+base+g2 (scale_aware),ridge,1.245569,217.2739,"+ Calendar UK (bank holidays, trading days)"
+base+g3 (scale_aware),ridge,1.121474,181.5508,"+ Prior year II (5w yoy mean, seasonal index, available flag)"
+base+g4 (scale_aware),ridge,1.125381,175.2658,"+ Transaction signals (return rate, export share, guest share)"
+base+g1+g3 (scale_aware),ridge,0.846821,96.9161,+ Derived behavior & Prior year II
+all_groups (scale_aware),ridge,0.949022,137.7079,All groups (base + g1 + g2 + g3 + g4)
+base_no_calendar (scale_aware),ridge,0.796445,35.9819,Base without week_of_year and month
+base+g3_no_calendar (scale_aware),ridge,0.784211,33.455,Base + g3 without week_of_year and month
+base+g1+g3_no_calendar (scale_aware),ridge,0.724696,23.8118,Base + g1 + g3 without week_of_year and month
+all_groups_no_calendar (scale_aware),ridge,0.747431,46.8511,All groups without week_of_year and month
+base_plus_christmas (scale_aware),ridge,1.144993,184.9904,Base plus weeks_to_christmas (tested for time index risk)

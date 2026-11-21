@@ -1,129 +1,75 @@
-# PROJECT_CONTEXT.md
+# PROJECT_CONTEXT.md (version 3.2)
 
-> Paste this file (plus CONTRACTS.md) at the start of every Claude chat.
-> If a decision here changes, the whole team agrees first, then this file is updated.
+> Paste this file (plus CONTRACTS.md and CONTRACTS_ADDENDUM.md) at the start of every AI chat.
+> The source of truth is the SRS (version 3.2, the Claude document; export it to docs/SRS.md). If a decision here changes, the team agrees first.
 
-## 1. Project title
-Retail Product Demand Estimation and Stockout Risk Analysis
+## 1. Project
+**Shelfwatch: Retail Product Demand Estimation and Stockout Risk Analysis.**
+Estimate weekly product demand from historical sales, identify products that need inventory attention, and give an explicit, configurable stockout-risk indicator with replenishment advice. Dataset: UCI Online Retail (541,909 rows, 2010-12-01 to 2011-12-09).
 
-## 2. Problem statement
-Estimate product demand from historical sales records and identify products that may need inventory attention. Use dates, product identifiers and quantities to build time-based demand features. Compare regression approaches, evaluate on later periods, and create a stockout-risk indicator based on an explicit inventory rule.
+## 2. Primary stakeholder (decided)
+**Retail Inventory and Replenishment Manager.** One user. Every page, endpoint and report section serves their weekly routine: see what needs attention, understand one product, decide the order, act, test assumptions, set policy, trust the numbers. Other roles are not designed for. The persona is assumed, not interviewed. Details: `docs/STAKEHOLDER.md`, SRS 1.6.
 
-**Expected deliverables**
-1. A demand model for a defined product set and time horizon
-2. Product-level demand estimates
-3. Forecast-error analysis
-4. A configurable stockout-risk indicator
-5. An inventory dashboard
-6. Clearly stated simulated-inventory assumptions (the dataset has no inventory-on-hand data)
-
-## 3. Dataset
-- UCI Online Retail: https://archive.ics.uci.edu/dataset/352/online+retail
-- About 541,909 rows, 1 Dec 2010 to 9 Dec 2011, UK online gift retailer
-- Columns: `InvoiceNo, StockCode, Description, Quantity, InvoiceDate, UnitPrice, CustomerID, Country`
-
-## 4. FROZEN design decisions (do not change without team agreement)
-
+## 3. Frozen design decisions
 | Item | Decision |
 |---|---|
-| Granularity | Product x week |
-| Week definition | Monday-start. `week_start` is the Monday date |
-| Target | `units` = total units sold of a product in that week |
-| Forecast horizon | **Next week (t+1)** only. 4-week horizon is an optional extra |
-| Product scope | Top 100 products by total units in the **training period**, with sales in at least 30 of the training weeks |
-| Valid weeks | Only full weeks. Drop partial first week (starting 2010-11-29) and partial last weeks (starting 2011-12-05). Full weeks are 2010-12-06 to 2011-11-28 (52 weeks) |
-| Train / test split | Chronological. **Test = last 8 full weeks** (week_start 2011-10-10 to 2011-11-28). Train = everything before |
-| Tuning | `TimeSeriesSplit` inside the training period only. Never touch the test set for tuning |
-| Random seed | `42` everywhere |
-| Python | 3.10 or 3.11. Libraries pinned in `requirements.txt` |
+| Granularity | Product x Monday-start week; target = units sold per product per week |
+| Horizon | Next week (t+1); 4-week horizon is an optional extra |
+| Products | Top 100 by training-period units, sales in at least 30 training weeks |
+| Valid weeks | Full weeks 2010-12-06 to 2011-11-28 (52). The shop-closure week 2010-12-27 has **no row** (it is missing data, not zero demand) and is listed in `closed_weeks.csv` |
+| Zero-fill | Each product is zero-filled from its first sale **through 2011-11-28**; never before its first sale. C1 = 5,067 rows, 100 products, 51 weeks with rows |
+| Split | Chronological. Test = last 8 full weeks (2011-10-10 to 2011-11-28, 800 rows). Training target weeks 2011-02-07 to 2011-10-03 (35 weeks, 3,467 rows) after 8 history-only weeks per product |
+| Validation | Week-based expanding-window TimeSeriesSplit inside the training period |
+| Forecast target week | 2011-12-05 |
+| Seed | 42 everywhere |
+| Python | 3.10 or 3.11, pinned versions |
 
-## 5. Data cleaning rules (Member 1 implements, everyone must know them)
-1. Remove cancellations: `InvoiceNo` starting with `C`
-2. Remove rows with `Quantity <= 0` or `UnitPrice <= 0`
-3. Remove non-product `StockCode` values: `POST, D, M, DOT, BANK CHARGES, AMAZONFEE, S, B, CRUK, PADS` and any code with no digits
-4. Keep rows with missing `CustomerID` (not needed for product demand)
-5. Outliers: cap line-level `Quantity` at the 99.9th percentile. Document the cap value in the report
-6. Fill missing weeks with `units = 0` from each product's first active week through the last full week (`2011-11-28`), excluding shop-closed weeks (not before a product's first active week)
-7. Drop partial weeks (see section 4)
-8. **Shop-closed weeks:** the week of 2010-12-27 has zero sales for every product (Christmas/New Year shutdown). It is listed in `data/processed/closed_weeks.csv` and excluded from `weekly_demand.parquet` (missing, not zero demand): no training row with it as the target, and lags/rolling stats skip over it
+## 4. Data rules
+1. Remove cancellations (InvoiceNo starts with C) from demand; keep them only to compute returns.
+2. Remove Quantity <= 0, UnitPrice <= 0, non-product StockCodes (POST, D, M, DOT, BANK CHARGES, AMAZONFEE, S, B, CRUK, PADS, C2, no-digit codes, GIFT and TEST prefixes).
+3. Keep rows with missing CustomerID.
+4. Cap line quantity at the 99.9th percentile of TRAINING rows (480 units; 415 lines capped).
+5. Top-100 selection and every learned statistic use training weeks only.
+6. Enrichment tables hold the value FOR week w; only `src/features.py` applies the one-week shift.
 
-## 6. Feature rules (Member 2 implements)
-- Target at week t uses only information from weeks **before t**
-- All lag and rolling features use `shift(1)` **before** `rolling()`
-- Planned features: lags 1, 2, 3, 4; rolling mean and std over 4 and 8 weeks; week of year, month, weeks to Christmas; previous-week average price, orders, customers; product average demand and volatility computed on past data only
-- **Leakage check is mandatory**: a test that confirms no feature uses data from week t or later
+## 5. Enrichment and features
+- **Base (15):** lag_1..4, roll_mean_4/8, roll_std_4/8, week_of_year, month, prev_avg_price, prev_orders, prev_customers, prod_past_mean, prod_past_std.
+- **G1 derived behaviour:** order size, trend ratio, price index, volatility (cv_4), zero streak.
+- **G2 calendar (holidays package, UK):** bank-holiday count and expected trading days of the target week.
+- **G3 prior year (Online Retail II, 2009-2010 sheet):** yoy_mean_5w, yoy_seasonal_index, yoy_available. Coverage is checked first (task E0).
+- **G4 transaction-derived (shifted):** return rate, export share, guest share (a hypothesis).
+- Groups are switchable and kept or dropped on VALIDATION WAPE only. Weather and national retail-index data are deliberately not used (one year cannot separate them from a time trend).
+- Static product attributes over the whole training period (for example customer concentration) are NOT model features.
 
-## 7. Models to compare
-1. Baseline A: last week's value (naive)
-2. Baseline B: 4-week moving average
-3. Ridge regression
-4. Random Forest
-5. LightGBM or XGBoost
-6. Optional: Poisson regression
+## 6. Models and metrics
+Baselines: naive, 4-week moving average. Models: Ridge, Random Forest, LightGBM, each with raw and scale-aware targets; ensemble; quantile models (p10, p90). Metrics: MAE, RMSE, WAPE, bias. Never MAPE.
+M5 result (test, defaults): moving average WAPE 0.4801 (bias -5.94), Ridge 0.4913 (bias -0.18), LightGBM 0.5315 (bias +26.23). The baseline wins; LightGBM over-forecasts. Report honestly even if the best model only slightly beats the baseline.
 
-**Metrics:** MAE, RMSE, WAPE, bias (mean of predicted minus actual). Do not use MAPE (zero-demand weeks).
-A model is only "good" if it beats both baselines on the test period.
+## 7. Risk and replenishment rules (summary; formulas in SRS 6.2)
+- Stock = user-entered record if present, else simulated: `initial_stock_weeks x avg weekly units x noise` (noise Uniform 0.5 to 1.5, seed 42). Defaults: lead time 1 week, service level 0.95, starting stock 3 weeks.
+- `forecast_lead_time = forecast_weekly x L`; `safety_stock = z x sigma_error x sqrt(L)`; `reorder_point = forecast_lead_time + safety_stock`.
+- HIGH if on_hand < forecast_lead_time; MEDIUM if on_hand < reorder_point; else LOW.
+- Advice: recommended order quantity, days to reorder, revenue at risk, stockout probability, and an **action** label: ORDER_NOW, ORDER_SOON, REVIEW_STOP (inactive products), HOLD.
+- Success measure for the manager: the replenishment-policy backtest (fill rate, stockout weeks, average on-hand), FR-R-9.
 
-## 8. Simulated inventory assumptions (state these in the dashboard and the report)
-The dataset has **no inventory-on-hand records**, so stock is simulated:
-
-- `on_hand = initial_stock_weeks x (average weekly units in training period) x noise`
-  - `noise` is drawn once per product from Uniform(0.5, 1.5) with a fixed seed, so results are reproducible
-  - Default `initial_stock_weeks = 3`
-- `lead_time_weeks`: default 1, adjustable 1 to 4
-- `service_level`: default 0.95, adjustable 0.80 to 0.99. `z = norm.ppf(service_level)`
-- `sigma_error`: standard deviation of the model's weekly forecast error per product, measured on validation or test predictions
-- `forecast_lead_time = forecast_weekly x lead_time_weeks`
-- `safety_stock = z x sigma_error x sqrt(lead_time_weeks)`
-- `reorder_point = forecast_lead_time + safety_stock`
-- `days_of_cover = on_hand / (forecast_weekly / 7)` (if forecast is 0, cover is capped at 999)
-
-**Risk rule**
-- HIGH: `on_hand < forecast_lead_time`
-- MEDIUM: `on_hand < reorder_point` (and not HIGH)
-- LOW: otherwise
-
-**Disclaimer text (must be visible on the dashboard):**
+**Disclaimer (visible on every page):**
 > Inventory levels are simulated. The dataset contains sales only, not stock-on-hand. Risk flags show how the rule behaves under the stated assumptions, not real stock positions.
 
-## 9. Known limitations (state honestly in the report)
-- Only about one year of history, so yearly seasonality cannot be learned. Calendar features such as week-of-year or weeks-to-Christmas act almost like a time index with a single year, so they must be tested by ablation (with and without) before being trusted
-- Demand drifts upward in Oct/Nov, so the test period sits at a higher level than most of training. Tree-based models cannot predict above the range they saw in training, so check for under-forecasting at the test peak
-- One shop-wide closure week (2010-12-27) in the history
-- Intermittent demand for many products
-- Simulated inventory, so risk outputs are illustrative
-- Wholesale customers cause bulk orders that are hard to predict
+## 8. System
+- **API:** FastAPI, all JSON endpoints under `/api`; **MySQL 8** via SQLAlchemy and PyMySQL (all project data plus inventory levels, plans, purchase orders, prediction log, request log; `sql/schema.sql`); CRUD with status codes 201, 204, 404, 409, 422; middleware: CORS, request id and timing, audit log, API key on writes, rate limit, error handler; `scripts/api_client.py` (httpx).
+- **Web:** five separate HTML pages (not a single-page app): Home, Predict, Product intelligence, Inventory manager, Analysis board. Plain HTML, CSS, JavaScript with `fetch` and event handling; served by FastAPI from the same app.
+- **Deployment (mentor's flow):** train, serve locally with FastAPI, public URL with **ngrok**, test with **Postman** (collection in `postman/`). The public URL works only while the laptop, MySQL, FastAPI and ngrok run; keep a second laptop and a `mysqldump` backup. Guide: `docs/DEPLOY_LOCAL_NGROK.md`. Kaggle is for publishing the dataset, notebook and model, not the live URL.
+- **No login page.** The site opens on Home. Writes use a server-side API key.
+- **Analysis board** (`analysis.html`): data sources and lineage, split, features, tuning, evaluation, business backtest, explain a forecast, system log; every chart names its MySQL source.
+- **Working system:** weekly plan workflow (generate, review, approve, export, receive) stored in MySQL.
+- **Datasets:** Online Retail (primary) and Online Retail II (prior-year supporting) plus UK holidays.
+- **Evaluation:** several faculty for 2+ hours; see `docs/EVALUATION_PLAN.md`.
 
-## 10. Repository structure
-```
-project/
-├── PROJECT_CONTEXT.md
-├── CONTRACTS.md
-├── MEMBER_PROMPTS.md
-├── data/raw/            (not committed)
-├── data/processed/
-├── data/mock/           (fake files for parallel work)
-├── notebooks/           01_eda, 02_modeling, 03_error_analysis
-├── src/                 data_prep.py, features.py, train.py, risk_engine.py
-├── models/              best_model.joblib, feature_list.json, config.json
-├── api/main.py
-├── dashboard/           index.html, config.js, css/, js/ (app, api, charts)
-├── tests/
-├── requirements.txt
-└── README.md
-```
+## 9. Repository layout and ownership
+See SRS 3.5. M1 data, enrichment, intelligence. M2 features and models. M3 risk engine, database, API, client. M4 web pages, deployment, Kaggle, report assembly.
 
-## 11. Ownership
-| Member | Role | Owns |
-|---|---|---|
-| M1 | Data and Analysis | `src/data_prep.py`, EDA notebook, error-analysis notebook, `weekly_demand.parquet` |
-| M2 | ML Modeling | `src/features.py`, `src/train.py`, model files, `predictions.csv`, `metrics.csv` |
-| M3 | Risk Engine and Backend | `src/risk_engine.py`, `api/main.py`, sensitivity analysis |
-| M4 | Dashboard, QA, Deployment | `dashboard/`, `tests/`, deployment, report and slides assembly |
+## 10. Known limitations (state honestly)
+One year of main data; intermittent and discontinued products (21829, 22740); bulk wholesale orders; simulated stock unless entered; persona assumed; the public URL depends on the presenter's laptop staying on; prior-year coverage may be partial; weekly one-step forecast reused across the lead time.
 
-## 12. Working rules
-- One Git branch per member. Merge to `main` through a pull request reviewed by a teammate
-- Never edit another member's owned file without telling them
-- Never change a schema in CONTRACTS.md alone
-- Every module has docstrings and at least a few pytest tests
-- Every member must be able to explain the whole pipeline in the viva
+## 11. Working rules
+One branch per member; pull requests reviewed by a teammate; one task per AI conversation in Planning mode; contract changes only through `CHANGE_REQUESTS.md` and the contracts files; never edit `docs/SRS.md` by hand (export it); every feature is evaluated before it is kept; print numbers from files, never from memory.

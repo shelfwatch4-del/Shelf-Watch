@@ -1,184 +1,146 @@
-# PROMPTS_DATA.md: Data and Analysis (Member 1)
+# PROMPTS_DATA.md: Data, Enrichment and Intelligence (Member 1), version 3
 
-**You own:** `src/data_prep.py`, `src/error_analysis.py`, `notebooks/01_eda.py`, `notebooks/03_error_analysis.py`, `data/processed/weekly_demand.parquet`, `closed_weeks.csv`, `cleaning_log.csv`, `product_segments.csv`, `error_analysis.csv`.
-**Hands off to:** Member 2 (ML), Member 3 (API), Member 4 (dashboard).
-**Setup first:** complete Phase 0 in `PROMPTS.md` (workspace rules and workflows).
+**You own:** `src/data_prep.py`, `src/enrichment.py`, `src/intelligence.py`, `src/error_analysis.py`, `notebooks/01_eda.py`, `03_error_analysis.py`, `05_insights.py`, and the files C1, C1b, C8 to C12 in `data/processed/`.
+**Setup:** paste the Windows preface and closing check from `PROMPTS_00_INDEX.md` into every prompt. Planning mode.
 
-**How to use:** open a **new Antigravity conversation per task**, use **Planning mode**, read the Implementation Plan artifact before approving, and finish with the closing check below. Commit after each task.
+## Status of earlier tasks
+| Task | Status |
+|---|---|
+| D0 to D7, D9 | Done (pipeline, tests, EDA, hand-off, data notes). 5,067 rows, 100 products, closure week has no row, zero-fill through 2011-11-28 |
+| **D8** error analysis | **Pending:** run after Member 2 delivers `predictions.csv` (task M12). Notes at the end of this file |
 
-**Closing check (add to the end of any prompt that lacks it):**
-```
-Before you finish: run the tests for this task, show the exact commands and output, list every file you created or changed, and list anything in the SRS sections I named that you did NOT implement. Do not claim success unless tests ran and passed.
-```
-
-> **Shortcut:** if you already have `phase1_member1.zip` (a working pipeline), copy it in and use **Task D0** instead of D1 to D5.
+New tasks start at **E0**.
 
 ---
 
-## Task D0: Verify an existing pipeline (shortcut)
+## Task E0: Check Online Retail II before using it (read-only)
+**SRS:** 4.6, A-6, Appendix D issue 1
 
-**Mode:** Planning | **Output:** an audit list
+Download **Online Retail II** from UCI (dataset id 502, `online_retail_II.xlsx`) and put it in `data/raw/`.
+```
+Read-only analysis. Do NOT change any code or data. Write findings to docs/E0_FINDINGS.md.
 
+1. Open data/raw/online_retail_II.xlsx (cache to parquet next to it the same way load_raw does, one parquet per sheet). Print the sheet names, the columns, the row count and the min and max InvoiceDate of each sheet.
+2. Map its columns to ours (Invoice -> InvoiceNo, Price -> UnitPrice, "Customer ID" -> CustomerID). State any other difference (dtypes, StockCode formats, missing values).
+3. Overlap check: compare weekly total units (after the same cleaning as the main file) for the weeks 2010-12-06 to 2011-03-28 in Online Retail II and in our main data. Report the maximum relative difference. If they differ by more than 1 percent, say what could explain it.
+4. Prior-year coverage: using only the sheet that covers 2009-12-01 to 2010-12-09, apply the same cleaning rules (cancellations, quantity, price, non-product codes). For our 100 products, print how many have at least one sale, at least 26 sale weeks, and at least 40 sale weeks between 2009-12-07 and 2010-11-29. List the products with no prior-year sales.
+5. Print the zero-sales weeks in that sheet (shop closure weeks around Christmas 2009).
+6. End with a recommendation: is the prior-year feature group viable? Give the coverage number that supports it. Do not claim viability without the printed coverage.
 ```
-src/data_prep.py and tests/test_data_prep.py already exist. Read docs/SRS.md sections 4.3 to 4.5 and PROJECT_CONTEXT.md section 5. Audit the code against each requirement FR-D-1 to FR-D-10 and list every gap in a table (requirement, status, evidence). Then run: python -m src.data_prep --raw "data/raw/Online Retail.xlsx" and confirm these expected results: 5,147 rows, 100 products, 52 weeks from 2010-12-06 to 2011-11-28, closed week 2010-12-27 in closed_weeks.csv, quantity cap about 480 (415 lines capped). Run pytest and report. Fix only real gaps and explain each fix. If a number differs from expected, report why instead of forcing a match.
-```
-**Done when:** the audit table has no open gaps and the numbers match.
+**Done when:** `docs/E0_FINDINGS.md` has real numbers. If coverage is below about 50% of the products, tell me; group G3 becomes optional.
 
 ---
 
-## Task D1: Load and cache the raw data
-
-**SRS:** FR-D-1 | **Output:** `load_raw()` in `src/data_prep.py`
+## Task E1: Calendar table (contract C9)
+**SRS:** FR-X-1
 
 ```
-Read docs/SRS.md section 4.1 (raw schema) and FR-D-1.
+Read docs/SRS.md section 4.6 and CONTRACTS_ADDENDUM.md C9. Add holidays to requirements.txt (pinned) and install it.
 
-Implement load_raw(raw_path) -> pd.DataFrame in src/data_prep.py:
-- Accept .xlsx, .csv (encoding latin-1, parse InvoiceDate) and .parquet.
-- For Excel: read once with openpyxl, then write a parquet cache next to the file (same name, .parquet). On later calls read the parquet instead.
-- Before saving the cache, cast InvoiceNo and StockCode to str and Description to pandas "string" dtype. The real file has numeric Description cells and mixed-type columns that crash parquet writing.
-- Use pathlib; no hard-coded absolute paths; must work on Windows, macOS and Linux.
+In src/enrichment.py implement build_calendar_weekly(weeks) -> DataFrame with columns week_start, uk_bank_holiday_count, trading_days_expected, is_christmas_week, covering every Monday from 2009-12-07 to 2011-12-05.
 
-Tests (tests/test_data_prep.py): a tiny DataFrame with a numeric Description round-trips through parquet without error; the cache is created on first call and reused on the second (check by monkeypatching read_excel to raise on the second call).
+- Bank holidays: use the holidays package for the United Kingdom, England subdivision (check which constructor the installed version supports and tell me). Verify that 2011-04-22, 2011-04-25, 2011-04-29 (royal wedding) and 2011-05-02 are present; if 2011-04-29 is missing, add it explicitly and say so.
+- Trading weekdays: derive from the training data which weekdays have any sales (expected Monday to Friday and Sunday, no Saturday). trading_days_expected = trading weekdays in the week minus bank holidays that fall on a trading weekday.
+- is_christmas_week = 1 if the week contains 24 to 26 December.
+- Write data/processed/calendar_weekly.csv and a CLI: python -m src.enrichment --calendar.
+
+Tests in tests/test_enrichment.py: the four holiday dates; trading_days_expected is lower in the 2011-04-25 and 2011-05-02 weeks than in a normal week; no Saturday counted; print the exact number of weeks and justify it; no missing values.
 ```
-**Done when:** `pytest tests/test_data_prep.py -k load -q` passes and `data/raw/Online Retail.parquet` appears after the first real load.
+**Done when:** the tests pass and the CSV exists.
+
+## Task E2: Prior-year table (contract C10)
+**SRS:** FR-X-2, FR-X-4
+
+```
+Read docs/SRS.md section 4.6, CONTRACTS_ADDENDUM.md C10 and docs/E0_FINDINGS.md.
+
+In src/enrichment.py implement build_prior_year_weekly(ret2_path, cap, products) -> DataFrame (product_id, week_start, units, orders):
+- Read only the sheet covering 2009-12-01 to 2010-12-09, map columns with a small normalize_columns adapter (do NOT change how clean_transactions behaves for the main file), and apply the same cleaning rules.
+- Cap Quantity at the SAME cap value used for the main training data (read it from the cleaning log; do not recompute it from this sheet).
+- Aggregate to Monday weeks; keep only weeks BEFORE 2010-12-06 (no overlap with the main file) and only our 100 products.
+- Zero-fill from each product's first prior-year sale to the last prior-year week; products with no prior-year sales get NO rows (missing, not zero). Closure weeks get no row.
+- If the file is missing: log a warning, write an empty table with the right columns, and do not crash (FR-X-4).
+- Print a coverage report: products with rows, median number of weeks per product, share with at least 26 weeks.
+- Write data/processed/prior_year_weekly.parquet; CLI: python -m src.enrichment --prior-year.
+
+Tests with a synthetic second-year sheet: same cleaning applied; no rows before a product's first sale; weeks on or after 2010-12-06 excluded; missing file handled; cap applied.
+```
+
+## Task E3: Transaction-derived weekly signals (contract C8)
+**SRS:** FR-X-3
+
+```
+Read CONTRACTS_ADDENDUM.md C8. In src/enrichment.py implement build_enrichment_weekly(raw_path, products, weeks) -> DataFrame (product_id, week_start, gross_units, cancelled_units, export_units, guest_units) on EXACTLY the same product-week grid as weekly_demand.parquet.
+
+- gross_units must equal C1 units (assert this).
+- export_units: capped units where Country != "United Kingdom".
+- guest_units: capped units where CustomerID is missing.
+- cancelled_units: absolute Quantity on invoices starting with C for these products, after the same product-code cleaning (these are the cancellations the demand pipeline removes). Assign each to the week of its InvoiceDate. They never reduce demand units.
+- Write data/processed/enrichment_weekly.parquet; CLI: python -m src.enrichment --enrichment.
+
+Tests: grid equals the C1 grid; gross_units equals C1 units; export_units and guest_units never exceed gross_units; cancelled_units never negative; C1 itself is unchanged (compare hashes before and after).
+```
+
+## Task E4: Product intelligence (contract C11)
+**SRS:** 5.4, FR-I-1 to FR-I-5, FR-I-7, FR-I-8
+
+```
+Read docs/SRS.md section 5.4 and CONTRACTS_ADDENDUM.md C11. Create src/intelligence.py with build_product_intelligence(weekly, raw_path, train_end="2011-10-10") -> DataFrame. Use TRAINING weeks only (week_start < train_end) for every number.
+
+- Demand pattern (Syntetos-Boylan): n_weeks = open training weeks from the product's first sale; ADI = n_weeks / number of weeks with units > 0; CV2 = (std / mean) squared of the non-zero weekly units. smooth: ADI < 1.32 and CV2 < 0.49; erratic: ADI < 1.32 and CV2 >= 0.49; intermittent: ADI >= 1.32 and CV2 < 0.49; lumpy: ADI >= 1.32 and CV2 >= 0.49.
+- ABC: revenue = sum of units x avg_price over training weeks; sort descending; cumulative share up to 80 percent is A, up to 95 percent B, the rest C. Also revenue_share.
+- XYZ: coefficient of variation of weekly units (std / mean): X up to 0.5, Y up to 1.0, Z above.
+- Lifecycle: new if the first sale is within the last 12 training weeks; inactive if no sales in the last 8 training weeks; otherwise compare the mean of the last 8 weeks with the mean of the 8 weeks before: growing if the ratio is at least 1.2, declining if at most 0.8, else mature. Also weeks_since_last_sale.
+- return_rate = cancelled_units / gross_units (from enrichment_weekly, training weeks); export_share; top3_customer_share and known_customer_coverage from the raw file (known customers only; state the coverage).
+- ALSO compute the demand pattern class for ALL products with at least 10 active training weeks (not only the top 100) and save it to data/processed/pattern_all_products.csv, so we can show why the top 100 were chosen.
+- Write data/processed/product_intelligence.csv; CLI: python -m src.intelligence.
+
+Tests (tests/test_intelligence.py): hand-made series that fall in each of the four pattern quadrants; ABC revenue shares sum to 1 and classes follow the 80 and 95 percent rules; lifecycle cases (new, inactive, growing, declining, mature); intelligence is IDENTICAL when sales in the test weeks are inflated; no row for products outside the top 100.
+
+Then print the distribution of each class for the top 100 and for all products. Expect the top 100 to be mostly smooth or erratic; do not force variety. Report what you find.
+```
+
+## Task E5: Bought-together pairs (contract C12)
+**SRS:** FR-I-6
+
+```
+Read CONTRACTS_ADDENDUM.md C12. In src/intelligence.py implement build_basket_pairs(raw_path, products, train_end="2011-10-10") -> DataFrame.
+
+- Baskets are non-cancelled invoices dated before train_end, product codes cleaned like the main pipeline, restricted to our 100 products. Skip invoices with fewer than 2 of our products. Ignore invoices with more than 100 distinct products and say how many were ignored.
+- Use a sparse invoice x product binary matrix (scipy.sparse) and co-occurrence = X.T @ X.
+- confidence(A to B) = n_AB / n_A; lift = confidence / (n_B / N), where N is the number of qualifying invoices.
+- Keep pairs with n_AB >= 30. For each product keep up to 3 companions ranked by lift (ties by n_AB).
+- Write data/processed/basket_pairs.csv with product_id, companion_id, companion_description, n_invoices, confidence, lift.
+
+Tests: a tiny set of invoices with hand-computed support, confidence and lift; minimum support enforced; a product with no qualifying pairs yields no rows; training-only (inflating test-period invoices changes nothing).
+
+Print the 10 strongest pairs with real numbers read from the file. Do not quote numbers from memory.
+```
+
+## Task E6: Insights notebook
+**SRS:** 5.4, FR-I-8
+
+```
+Create notebooks/05_insights.py (cell format, runs top to bottom). Save figures to reports/figures/ with titles and axis labels:
+1. Demand pattern distribution: top 100 versus all products (grouped bars), with a sentence on why the top 100 were chosen.
+2. ABC Pareto curve (cumulative revenue share by product rank) and XYZ counts.
+3. Lifecycle stage counts, and the list of inactive products.
+4. Top 10 products by return rate and by export share (with descriptions).
+5. Top 10 bought-together pairs.
+6. Weekly total units with bank-holiday and Christmas weeks marked, with a comment on the royal wedding and Easter weeks only if the data shows an effect.
+7. If prior_year_weekly.parquet has data: 2010 versus 2011 weekly totals for the aligned weeks, showing the October to November 2010 build-up.
+Under each section add a markdown cell "What to write in the report" with real numbers, framed as a decision for the Retail Inventory and Replenishment Manager (what should they do differently because of this finding?). End with 6 findings, including anything that surprised you or that did NOT show an effect.
+```
+
+## Task E7: Contracts, tests and hand-off
+```
+1. Confirm CONTRACTS.md contains the merged addendum (C1 amendments, C4, C7, C8 to C13). If not, merge CONTRACTS_ADDENDUM.md now and add a change-log row.
+2. Extend tests/test_contracts.py with schema checks for C8, C9, C10, C11 and C12 on data/processed/ (and on data/mock/ with small mock versions generated in scripts/make_mocks.py).
+3. Update docs/HANDOFF_M1.md and docs/DATA_NOTES.md: the new tables and their schemas, row counts, the prior-year coverage figure, sources with citations (UCI Online Retail, Online Retail II, holidays package version), and the limits (guest_share is a hypothesis; weather and retail-index series were deliberately not used, with the reason).
+4. Run pytest -q and show the full output. Suggested commit message: feat(data): enrichment tables and product intelligence.
+```
 
 ---
 
-## Task D2: Row-level cleaning with a log
-
-**SRS:** FR-D-2, FR-D-3, FR-D-9 | **Output:** `clean_transactions()`
-
-```
-Read docs/SRS.md section 4.3 and PROJECT_CONTEXT.md section 5.
-
-Implement clean_transactions(raw) -> tuple[pd.DataFrame, pd.DataFrame] returning the cleaned transactions and a log DataFrame with columns step and rows_remaining.
-
-Steps, in this order, each logged with how many rows it removed:
-1. raw rows (starting count)
-2. drop cancellations: InvoiceNo (after strip and upper) starts with "C"
-3. drop Quantity <= 0
-4. drop UnitPrice <= 0
-5. drop non-product StockCodes: the set {POST, D, M, DOT, BANK CHARGES, AMAZONFEE, S, B, CRUK, PADS, C2}, any code with no digit, and any code starting with GIFT or TEST (compare after strip and upper)
-
-Rules: keep rows with missing CustomerID; strip and normalise StockCode to upper case; do not mutate the input DataFrame.
-
-Expected on the real file: 541,909 -> 532,621 -> 531,285 -> 530,104 -> 527,734 rows. Report any difference.
-
-Tests: a synthetic DataFrame with one row of each junk type plus normal rows; assert only the normal rows survive, the log is monotonically decreasing, and the input is unchanged.
-```
-**Done when:** the log numbers match the expected counts.
-
----
-
-## Task D3: Weeks, closed weeks and outlier cap
-
-**SRS:** FR-D-4, FR-D-5, FR-D-8 | **Output:** week helpers
-
-```
-Read docs/SRS.md sections 4.3 and 4.5, and PROJECT_CONTEXT.md section 4.
-
-Implement in src/data_prep.py:
-- week_start_of(dates: pd.Series) -> pd.Series: the Monday 00:00 of each timestamp's week.
-- full_week_range(dates: pd.Series) -> pd.DatetimeIndex: Mondays of all FULL weeks covered by the data (first Monday on or after the data start, up to the last Monday whose Sunday is on or before the data end). Computed from the data, not hard-coded.
-- find_closed_weeks(df, weeks) -> pd.DatetimeIndex: full weeks in which the whole shop recorded no transactions. These are closures, NOT zero demand.
-- cap_quantity(df, train_mask, quantile=0.999) -> (df, cap_value, n_capped): cap line-level Quantity at the quantile computed on TRAINING rows only.
-
-Tests: week_start_of maps Wed 2011-03-02 and Sun 2011-03-06 to Mon 2011-02-28 and Mon 2011-03-07 to itself; on UCI-shaped dates (2010-12-01 to 2011-12-09) full_week_range gives 2010-12-06 .. 2011-11-28 with 52 weeks; closed-week detection on a small example; the cap value does not change when test-period rows are inflated.
-```
-**Done when:** the tests pass; on real data the cap is about 480 and the closed week is `2010-12-27`.
-
----
-
-## Task D4: Build the weekly demand table (contract C1)
-
-**SRS:** FR-D-6, FR-D-7, FR-D-9, FR-D-10 | **Output:** `weekly_demand.parquet`
-
-```
-Read docs/SRS.md sections 4.3 to 4.5 and CONTRACTS.md C1 and C1b.
-
-Implement build_weekly_demand(raw_path, out_path="data/processed/weekly_demand.parquet", log_path="data/processed/cleaning_log.csv", closed_weeks_path="data/processed/closed_weeks.csv", top_n=100, test_weeks=8, min_active_train_weeks=30) using the helpers from D1 to D3.
-
-Pipeline: load -> clean -> assign week_start -> keep only full weeks (log how many rows are dropped) -> detect closed weeks and save them -> define train/test boundary (test = last test_weeks full weeks, expected to start 2011-10-10) -> cap Quantity using TRAIN rows only -> select the Top-N products by total units in the TRAINING period only, requiring sales in at least 30 training weeks -> aggregate to product x week -> fill missing weeks between each product's first and last active week.
-
-Aggregation: units = sum(Quantity), orders = nunique(InvoiceNo), customers = nunique(CustomerID) (NaN ignored), avg_price = mean(UnitPrice). In filled weeks: units, orders, customers = 0; avg_price forward-filled. description = most frequent description per product.
-
-Output columns, in order: product_id, description, week_start, units, orders, customers, avg_price. Types: units, orders, customers int; week_start datetime (Mondays); sorted by product_id, week_start.
-
-Also implement validate_c1(df) raising AssertionError for any contract violation (column order, Mondays only, units >= 0, no duplicate product-week rows, int types, avg_price > 0, no gaps in each product's range, sorted) and call it before saving. Add a CLI: python -m src.data_prep --raw "data/raw/Online Retail.xlsx". Print the cleaning log and a final summary line.
-
-Expected on the real file: 5,147 rows, 100 products, 2010-12-06 to 2011-11-28, train 44 weeks, closed week 2010-12-27.
-```
-**Done when:** the real run prints the expected summary and `validate_c1` passes.
-
----
-
-## Task D5: Pipeline tests with synthetic data
-
-**SRS:** section 10 (T-D-1 to T-D-4)
-
-```
-Create tests/synthetic.py with make_synthetic_raw(n_products=150, seed=42) that mimics the UCI file: dates 2010-12-01 to 2011-12-09, no Saturday trading, the first 100 products sell a lot and the rest rarely, about 25% missing CustomerID. Inject known junk: a cancellation (C999001), POST, DOT, a zero-price row, an 80,995-unit order on 2011-04-04 and a gift voucher code gift_0001_20.
-
-Then complete tests/test_data_prep.py with these tests (run against the synthetic raw saved to a temp parquet): schema equals C1; exactly 100 products; Mondays only and no duplicates; no partial weeks (min week >= 2010-12-06, max <= 2011-11-28); no negative units; no gaps inside each product's range; zero-demand weeks exist and units are ints; junk rows removed; the outlier is capped (max weekly units below 20,000); top-100 selection is unchanged when a product's sales are inflated only in the test period; closed-week detection works on a small example.
-```
-**Done when:** `pytest tests/test_data_prep.py -q` is fully green. Commit: `feat(data): weekly demand pipeline and tests`.
-
----
-
-## Task D6: Exploratory data analysis
-
-**SRS:** section 4, 5.3 | **Output:** `notebooks/01_eda.py`, `reports/figures/*.png`
-
-```
-Read docs/SRS.md section 4.2. Create notebooks/01_eda.py in cell format (# %% markers, runnable top to bottom) using data/processed/weekly_demand.parquet, closed_weeks.csv, and the cleaned raw transactions.
-
-Produce and save to reports/figures/ (dpi 150, titled, axis labels with units):
-1. Rows remaining after each cleaning step (horizontal bars)
-2. Total weekly units with a dashed line at the test start (2011-10-10) and a marker on the closed week
-3. Top 15 products by total units (code + short description)
-4. Histogram of the share of zero-demand weeks per product, and print the overall zero share
-5. Weekly units distribution, raw and log(1+x), side by side
-6. Volume segments: low, medium, high (tertiles of average weekly units); save data/processed/product_segments.csv with columns product_id, segment
-7. Coefficient of variation per product (histogram)
-8. Country share of units (print top 8)
-9. Quantity distribution and the five largest raw quantities, and the cap value
-
-Under each section add a markdown cell "What to write in the report" with 2 to 3 sentences using the real numbers. At the end add a markdown summary of what the data shows about: the October to November level shift, the closure week, intermittent demand.
-```
-**Done when:** the notebook runs without error and 9 figures plus `product_segments.csv` exist. Commit: `feat(data): EDA and volume segments`.
-
----
-
-## Task D7: Hand-off check to the team
-
-```
-Run the contract checks: pytest tests/test_contracts.py -q against data/processed/. Then write docs/HANDOFF_M1.md for Members 2 to 4 containing: file paths and schemas delivered (C1, C1b, product_segments.csv), the exact row and product counts, the closed-week rule (week 2010-12-27 is missing data, not zero demand), the train/test boundary dates, the quantity cap value, the cleaning log table, and three known data quirks they should remember (intermittent demand, level shift in October to November, bulk wholesale orders). Do not change any code.
-```
-**Done when:** the hand-off note exists and the contract tests pass. Tell the team in chat.
-
----
-
-## Task D8: Forecast-error analysis (after Member 2 delivers `predictions.csv`)
-
-**SRS:** 5.3 (FR-E-1 to FR-E-6) | **Output:** `src/error_analysis.py`, `error_analysis.csv`, notebook
-
-```
-Read docs/SRS.md section 5.3 and CONTRACTS.md C2. Inputs: data/processed/predictions.csv, metrics.csv, product_segments.csv, weekly_demand.parquet.
-
-1. Implement src/error_analysis.py with build_error_analysis(predictions, segments) writing data/processed/error_analysis.csv: one tidy table with columns level (segment, week, product), key, model_name, n, MAE, RMSE, WAPE, bias, over_forecast_units, under_forecast_units. Segment level = low, medium, high; week level = the 8 test weeks; product level = every product. Include all models, split == "test" only.
-2. Create notebooks/03_error_analysis.py (cell format) for the best model and the best baseline: error by volume segment; error by test week with a comment on spike weeks; predicted vs actual scatter and residual histogram; the 10 best and 10 worst products with a one-line reason each (intermittent demand, bulk orders, level shift); total over-forecast versus under-forecast units, with one sentence on why under-forecasting causes stockouts. Save figures to reports/figures/.
-3. End the notebook with "For the report: findings": 5 concrete findings with numbers.
-
-Tests: error_analysis.csv schema; segment-level numbers reproduce from predictions.csv; over plus under forecast equals total absolute error.
-```
-**Done when:** `error_analysis.csv` is written and Member 3 confirms `/error-analysis` can read it. Commit: `feat(analysis): forecast-error analysis`.
-
----
-
-## Task D9: Data notes for the report and viva
-
-```
-Write docs/DATA_NOTES.md from the real project files only (cleaning_log.csv, weekly_demand.parquet, closed_weeks.csv, EDA outputs). Sections: Dataset and source; Cleaning rules and why each exists (one sentence each); real row counts after each step; weekly aggregation and why weekly (daily is too sparse); product selection and why training-only; outlier handling; the closure week; limitations. Mark any number you cannot find in the files as TODO. Then list 8 likely viva questions about the data with 2-sentence model answers.
-```
-**Done when:** the file exists with no invented numbers. Commit: `docs(data): data notes`.
+## Task D8 (pending): Forecast-error analysis
+Run after M12 delivers `predictions.csv` and `metrics.csv`. Use the earlier D8 prompt, with two additions: split the error by demand pattern class and by ABC class from `product_intelligence.csv`, and add the two stopped-selling products (21829 and 22740) as a labelled case study in the notebook.

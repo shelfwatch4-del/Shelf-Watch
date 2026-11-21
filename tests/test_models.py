@@ -9,7 +9,10 @@ import pandas as pd
 import pytest
 
 from src.train import (
+    MODEL_NAMES,
     evaluate,
+    fit_predict,
+    make_model,
     predict_moving_avg_4,
     predict_naive,
     split_chronological,
@@ -119,4 +122,67 @@ def test_baselines_clip_at_zero_and_naive_fallback() -> None:
     np.testing.assert_allclose(ma4_preds, np.array([3.5, 0.0, 0.0, 7.25]))
     assert np.all(naive_preds >= 0.0)
     assert np.all(ma4_preds >= 0.0)
+
+
+def test_make_model_invalid_name() -> None:
+    """make_model must raise ValueError for unsupported model names."""
+    with pytest.raises(ValueError, match="Unknown model name"):
+        make_model("xgboost")
+
+
+@pytest.mark.parametrize("model_name", MODEL_NAMES)
+def test_models_fit_and_predict_finite(model_name: str) -> None:
+    """Each model must fit on a tiny frame and predict finite, clipped values."""
+    features = ["f1", "f2", "f3"]
+    train = pd.DataFrame(
+        {
+            "f1": [1.0, 2.0, np.nan, 4.0, 5.0, 6.0],
+            "f2": [10.0, 12.0, 14.0, np.nan, 18.0, 20.0],
+            "f3": [0.5, 1.0, 1.5, 2.0, 2.5, 3.0],
+            "target": [5.0, 7.0, 9.0, 11.0, 13.0, 15.0],
+        }
+    )
+    test = pd.DataFrame(
+        {
+            "f1": [np.nan, 7.0, -100.0],
+            "f2": [16.0, np.nan, -200.0],
+            "f3": [2.0, 3.5, -50.0],
+        }
+    )
+
+    preds = fit_predict(model_name, None, train, test, features=features)
+
+    assert preds.shape == (len(test),)
+    assert np.all(np.isfinite(preds))
+    assert np.all(preds >= 0.0)
+
+
+def test_ridge_imputer_uses_train_median_only() -> None:
+    """Ridge pipeline imputer statistics must come from train only, never test."""
+    features = ["f1", "f2"]
+    train = pd.DataFrame(
+        {
+            "f1": [2.0, 4.0, 6.0, 4.0],
+            "f2": [1.0, 2.0, 3.0, 2.0],
+            "target": [4.0, 8.0, 12.0, 8.0],
+        }
+    )
+    # Test contains NaN and an extreme outlier (1000.0) that would shift a test median.
+    test = pd.DataFrame(
+        {
+            "f1": [np.nan, 4.0, 1000.0],
+            "f2": [2.0, 2.0, 1000.0],
+        }
+    )
+
+    pipeline = make_model("ridge")
+    pipeline.fit(train[features], train["target"])
+
+    imputer_stats = pipeline.named_steps["imputer"].statistics_
+    np.testing.assert_allclose(imputer_stats, np.array([4.0, 2.0]))
+
+    preds = pipeline.predict(test[features])
+    # Row 0 (f1=NaN, f2=2.0) must get the exact same prediction as Row 1 (f1=4.0, f2=2.0).
+    assert preds[0] == pytest.approx(preds[1])
+
 

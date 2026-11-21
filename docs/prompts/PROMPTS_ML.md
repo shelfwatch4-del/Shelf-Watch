@@ -1,202 +1,146 @@
-# PROMPTS_ML.md: Machine Learning (Member 2)
+# PROMPTS_ML.md: Machine Learning (Member 2), version 3
 
-**You own:** `src/features.py`, `src/train.py`, `models/*`, `data/processed/predictions.csv`, `metrics.csv`, `next_week_forecast.csv`, `notebooks/02_modeling.py`, `docs/MODEL_CARD.md`.
-**Inputs from Member 1:** `weekly_demand.parquet`, `closed_weeks.csv`, `product_segments.csv` (use `data/mock/` until they exist).
-**Hands off to:** Member 1 (error analysis), Member 3 (risk engine and API).
-**Setup first:** Phase 0 in `PROMPTS.md`. Use the **strongest available model** and **Planning mode** for every task here.
+**You own:** `src/features.py`, `src/train.py`, `models/*`, `data/processed/predictions.csv`, `metrics.csv`, `next_week_forecast.csv`, `notebooks/02_modeling.py`, `docs/MODEL_CARD.md`, `kaggle/notebook/`.
+**Inputs:** `weekly_demand.parquet`, `closed_weeks.csv`, `product_segments.csv`, and (after Member 1's E1 to E5) `calendar_weekly.csv`, `prior_year_weekly.parquet`, `enrichment_weekly.parquet`, `product_intelligence.csv`.
+**Setup:** paste the Windows preface and closing check from `PROMPTS_00_INDEX.md` into every prompt. Planning mode and the strongest model.
 
-**Rules that apply to every task (already in `.agents/rules/02-ml-rules.md`):** chronological split only; `shift(1)` before rolling; tune only inside the training period; never use the test set for tuning, imputation, scaling, capping or selection; metrics = MAE, RMSE, WAPE, bias (never MAPE); clip predictions at 0; seed 42.
+**Rules that apply to every task:** chronological split only; `shift(1)` before rolling; tune only inside the training period; never use the test set for tuning, imputation, scaling, capping, feature selection or model selection; metrics MAE, RMSE, WAPE, bias (never MAPE); clip predictions at 0; seed 42. Enrichment tables hold the value FOR week w and only `features.py` shifts them.
 
-**Closing check (add to any prompt that lacks it):**
-```
-Before you finish: run the tests for this task, show exact commands and output, list every file you created or changed, and list anything in the SRS sections I named that you did NOT implement. Do not claim success unless tests ran and passed.
-```
+## Status
+| Task | Status |
+|---|---|
+| M1 to M5 | Done: lag, rolling, calendar, commercial and history features (15 default features), split, baselines, Ridge, Random Forest, LightGBM at defaults |
+| M5 result (test) | Moving average WAPE 0.4801 (bias -5.94); Ridge 0.4913 (bias -0.18); LightGBM 0.5315 (bias +26.23). **The baseline wins; LightGBM over-forecasts** |
+| **M5b** | Next: diagnose (read-only) |
 
-**Key dates:** training target weeks `< 2011-10-10`; test = 8 weeks `2011-10-10` to `2011-11-28`; forecast target week `2011-12-05`; closed week `2010-12-27` (missing data, not zero demand).
-
----
-
-## Task M1: Lag and rolling features
-
-**SRS:** FR-F-1, FR-F-2, FR-F-7 | **Output:** first part of `src/features.py`
-
-```
-Read docs/SRS.md section 5.1 and PROJECT_CONTEXT.md section 6. Input: data/processed/weekly_demand.parquet and closed_weeks.csv.
-
-Create src/features.py with build_features(weekly: pd.DataFrame, closed_weeks) -> pd.DataFrame returning one row per product per TARGET week t, with columns product_id, week_start, target (= units at t) and features.
-
-In this task implement only:
-- lag_1, lag_2, lag_3, lag_4 (units at t-1 .. t-4)
-- roll_mean_4, roll_std_4, roll_mean_8, roll_std_8: ALWAYS apply shift(1) BEFORE rolling, so week t is never inside its own window. Use min_periods=2.
-
-Closed week 2010-12-27: set units to NaN for that week BEFORE building any feature. It must never appear as a target row, and lags and rolling windows must skip over it (use the previous non-missing weeks), not treat it as 0.
-
-Drop rows that lack enough history for the longest window and print how many rows were dropped per product and in total.
-
-Write a pytest test now: build features, change units for one product at week t and every later week, rebuild, and assert all features at week t are identical (the leakage test). Name it test_no_leakage_from_future.
-```
-**Done when:** the leakage test passes.
+Why the M5 result matters: the earlier worry was that trees would under-forecast the higher October to November level, but LightGBM over-forecast. The likelier cause is overfitting to wholesale spikes on raw-unit targets across products of very different size. The tasks below test that instead of assuming it.
 
 ---
 
-## Task M2: Calendar, commercial and product-history features
+## Task M5b: Diagnose the M5 results (read-only)
+```
+Read-only. Do NOT change src/. Create scripts/diagnose_m5.py and docs/M5_DIAGNOSIS.md.
 
-**SRS:** FR-F-3 to FR-F-5, FR-F-9
+Using the current M5 code and default models, print on the TEST set for naive, moving_avg_4, ridge, random_forest and lightgbm: MAE, RMSE, WAPE, bias. Then:
+1. Per test week (8 weeks): WAPE and bias for each model.
+2. By volume segment (data/processed/product_segments.csv): WAPE and bias for each model.
+3. The share of test rows where actual exceeds that product's maximum training target, and the share of those rows each model under-predicts.
+4. For LightGBM: the 10 products and the 10 (product, week) rows contributing the most absolute error, and what share of total absolute error they make up.
+5. LightGBM training WAPE versus test WAPE (overfitting check).
+End docs/M5_DIAGNOSIS.md with 5 findings that say, with the printed numbers, whether the problem is (a) spikes and scale, (b) level shift, (c) overfitting, or something else. Do not guess; cite the numbers.
+```
+**Done when:** the findings are backed by printed numbers.
+
+## Task M6: Switchable feature groups
+**SRS:** FR-F-10 to FR-F-16 | **Needs:** E1, E2, E3 (build G1 first if they are not ready)
 
 ```
-Extend src/features.py (do not change the lag and rolling code or its tests).
+Read docs/SRS.md section 5.1 (FR-F-10 to FR-F-16) and CONTRACTS_ADDENDUM.md C8, C9, C10. Do not change existing feature definitions or their tests.
 
-Add, all computed only from information strictly before target week t:
-- week_of_year, month (of the target week's week_start; these are known in advance)
-- prev_avg_price, prev_orders, prev_customers: the previous week's values (shift(1)); for the closed week's successor use the last non-missing value
-- prod_past_mean, prod_past_std: expanding mean and std of the product's units over weeks strictly before t (shift(1) before expanding)
+In src/features.py add FEATURE_GROUPS = {"base": FEATURE_COLUMNS (the existing 15), "g1": [...], "g2": [...], "g3": [...], "g4": [...]} and extend build_features(weekly, closed_weeks, enrichment=None, groups=("base",)), build_future_features(...) with the same arguments.
 
-Define module-level lists:
-- FEATURE_COLUMNS: the ordered default features (lags, rolling, week_of_year, month, prev_avg_price, prev_orders, prev_customers, prod_past_mean, prod_past_std)
-- OPTIONAL_FEATURES = ["weeks_to_christmas"] (weeks between week_start and 2011-12-25, a time-index proxy); NOT in FEATURE_COLUMNS because with one year of data it behaves like a row counter and will be evaluated by ablation.
+Groups (all computed only from information known before target week t, except calendar facts known in advance):
+- g1 (derived behaviour): order_size_lag1 = units / orders at t-1 (guard zero orders); trend_ratio = roll_mean_4 / (roll_mean_8 + 1e-9, guarded); price_index = prev_avg_price / mean of the previous 8 weeks' prices; cv_4 = roll_std_4 / (roll_mean_4 + 1); zero_streak = consecutive zero weeks before t.
+- g2 (calendar, from calendar_weekly.csv): uk_bank_holiday_count and trading_days_expected of the TARGET week.
+- g3 (prior year, from prior_year_weekly.parquet): yoy_mean_5w = mean of prior-year units for weeks t-54 to t-50 (weeks), needing at least 3 values else missing; yoy_seasonal_index = yoy_mean_5w divided by the product's mean over all its prior-year weeks; yoy_available (0 or 1).
+- g4 (transaction-derived, shifted): return_rate_4w = sum(cancelled_units over t-4..t-1) / max(sum(gross_units over t-4..t-1), 1); export_share_4w; guest_share_4w. Skip the closure week like the other rolling features.
 
-Also implement build_future_features(weekly, closed_weeks, target_week) -> one row per product for a week with NO target (used for the 2011-12-05 forecast): same features, computed from weeks before target_week only.
+Also implement build_custom_features(series, target_week) for a user-entered series (units, optional prices, orders, customers): builds base and g1 and g2 features exactly like build_features; g3 and g4 columns are missing.
 
-Tests: no feature uses same-week units, orders, customers or price; FEATURE_COLUMNS equals the columns produced (same order); build_future_features for 2011-12-05 uses no data from 2011-12-05 or later and has the same columns as build_features.
+Tests: each group switches on and off by name; column order is stable; EXTEND the leakage test so that, for 3 products and 3 target weeks each, it changes units, orders, customers, avg_price AND the enrichment columns at every week >= t and asserts that ALL feature columns of EVERY group at week t are identical (on the fixture and on the real tables); yoy features use only weeks t-54 to t-50; custom features equal table features for a series taken from the table.
+
+Print the row counts and the share of missing values per feature for each group.
 ```
-**Done when:** `pytest tests/test_features.py -q` is green.
+**Done when:** the extended leakage test passes for every group.
+
+## Task M7: Tuning with a scale-aware candidate
+**SRS:** FR-M-4, FR-M-11
+
+```
+Read docs/SRS.md section 5.2. Use the chosen feature set "base" for now (groups are compared in M8).
+
+1. Week-based splitter: expanding-window TimeSeriesSplit over the UNIQUE target weeks of the training period (n_splits=5), so no week appears on both sides. Test that train weeks precede validation weeks in every fold.
+2. tune(name, train, features, n_trials=30, seed=42): random search scored by validation WAPE. Spaces: ridge alpha (log 1e-3 to 1e3); random_forest n_estimators 100 to 500, max_depth 3 to 20 or None, min_samples_leaf 1 to 20; lightgbm num_leaves 8 to 64, learning_rate (log 0.01 to 0.2), n_estimators 100 to 600, min_child_samples 5 to 80, subsample 0.6 to 1.0, colsample_bytree 0.6 to 1.0, reg_lambda (log 1e-3 to 10).
+3. Two target modes for every model: raw units, and scale-aware (target divided by roll_mean_4 or roll_mean_8, chosen as a hyperparameter, with the denominator floored at 1; multiply back at prediction time). Report them as separate candidates.
+4. Out-of-fold validation predictions for every candidate (product_id, week_start, actual, predicted).
+5. Save the best parameters to models/tuned_params.json.
+
+Never touch the test set. Print a table: candidate, mean validation WAPE, validation bias, best parameters, time taken. Say plainly whether any candidate beats the moving average on VALIDATION.
+```
+
+## Task M8: Feature-group ablation
+**SRS:** FR-F-14, FR-F-15
+
+```
+Using the best tuned LightGBM and Ridge (both target modes) from M7, compare these feature sets on VALIDATION only (out-of-fold): base; base+g1; base+g2; base+g3; base+g4; all groups; also base with and without week_of_year and month; and base plus weeks_to_christmas.
+
+For each set print validation WAPE, bias and the paired difference against base per fold (so we can see if an improvement is consistent or one lucky fold). Decide which groups to keep using validation WAPE only. Report groups that did not help, and flag guest_share_4w explicitly as a hypothesis. Warn if weeks_to_christmas or a calendar feature seems to act as a time index. Save the decision to models/chosen_groups.json and the table to models/ablation.json (rows: groups, val_wape, val_bias).
+
+Do not use the test set. Do not drop a group because it looks good or bad on test.
+```
+
+## Task M9: Diagnostics and ensemble
+```
+Using the chosen groups and best candidate:
+1. Over-forecast and under-forecast units separately for every candidate (the manager's costs are asymmetric: a stockout loses sales, overstock ties up cash). Then per-week bias and WAPE across the 8 test weeks for every candidate (table 8 weeks x candidates). State whether tree models under-forecast or over-forecast in October and November and by how much.
+2. Error by demand pattern class and ABC class from product_intelligence.csv (if it exists).
+3. Ensemble candidate "ensemble": w x best_ML + (1 - w) x moving_avg_4 with w from 0.0 to 1.0 in steps of 0.1, chosen on VALIDATION only. Report the chosen w and its validation and test metrics.
+Add the ensemble to the comparison. Do not select a model here.
+```
+
+## Task M10: Quantile models (prediction intervals)
+**SRS:** FR-M-13
+
+```
+Train two LightGBM quantile models (objective quantile, alpha 0.1 and 0.9) on the chosen features, with the scale-aware target if it was chosen. Produce out-of-fold validation quantiles, then refit on the full training period.
+- Sort p10 <= point forecast <= p90 after prediction and clip at 0.
+- Report empirical coverage (share of actuals inside [p10, p90]) on validation and on test, and the pinball loss. The target is about 80 percent. If validation coverage is far from 80 percent, apply a simple correction based on the validation residuals (document exactly what you did) and report coverage again.
+- Save models/q10.joblib and models/q90.joblib and write the coverage figures to models/interval_coverage.json.
+Tests: ordering holds for every row; coverage function matches a hand-computed example; saved models reload and reproduce predictions.
+```
+
+## Task M11: Select the model, save artifacts, add `predict_custom`
+**SRS:** FR-M-7, FR-M-9, FR-M-14 | **Contract:** C5
+
+```
+1. Select the best candidate by VALIDATION WAPE, ties broken by validation bias. Refit on the full training period with the chosen groups and target mode. Save models/best_model.joblib, models/feature_list.json (ordered), models/config.json {model_name, target_mode, groups, horizon_weeks: 1, train_end: "2011-10-03", test_start: "2011-10-10", seed: 42, library_versions, data_version}.
+2. Implement predict_custom(payload) in src/train.py (or src/predict.py): payload = {recent_units: 8 to 12 non-negative numbers oldest first, recent_prices, recent_orders, recent_customers (optional), target_week}. Build features with build_custom_features, predict with the saved model and quantile models, and return {forecast_weekly, forecast_p10, forecast_p90, features_used, notes}. The notes must say which groups were unavailable (g3, g4). Reject fewer than 8 values or negative values with ValueError.
+3. Tests: the saved model reloads in a fresh process and reproduces stored test predictions exactly; predict_custom for a series taken from the table equals the table-based prediction for the shared features; bad payloads are rejected.
+```
+
+## Task M12: Result files (contracts C2, C3, C4)
+**SRS:** FR-M-5, FR-M-10
+
+```
+Read CONTRACTS.md C2, C3, C4 and CONTRACTS_ADDENDUM.md C4. Write:
+1. data/processed/predictions.csv: product_id, week_start, actual, predicted, model_name, split ("test" and "val") for EVERY candidate, including baselines, ensemble and the scale-aware variants.
+2. data/processed/metrics.csv: model_name, split, MAE, RMSE, WAPE, bias for every candidate and both splits.
+3. data/processed/next_week_forecast.csv: product_id, week_start (2011-12-05), forecast_weekly, forecast_p10, forecast_p90, sigma_error, avg_weekly_units_train, last_avg_price. sigma_error = per-product standard deviation of the best model's OUT-OF-FOLD validation errors (predicted minus actual); with fewer than 6 validation observations use the pooled value of the product's volume segment. avg_weekly_units_train excludes the closure week. last_avg_price = the product's last open-week price before the forecast week.
+Tests: schema checks for C2, C3, C4; 100 products; 800 test rows per candidate; no negative or missing forecasts; sigma_error >= 0; p10 <= forecast <= p90.
+Then tell Members 1 and 3 that D8 and the API can proceed.
+```
+
+## Task M13: Notebook, model card and Kaggle notebook
+```
+1. notebooks/02_modeling.py (cell format) reproducing the whole flow from the processed tables to the saved artifacts, with a final metrics table, WAPE by candidate, predicted versus actual for 6 sample products, and the ablation table.
+2. docs/MODEL_CARD.md: purpose and horizon; data and split dates; features by group and why each exists; candidates and tuning budget; final metrics (real numbers only); the chosen model and why (validation-based); the level-shift and spike findings; interval coverage; limitations (one year of main data, intermittent demand, bulk orders, closure week, guest_share hypothesis); how to reload and use the model. Mark any number you cannot find as TODO.
+3. kaggle/notebook/shelfwatch_modeling.py: a version of the notebook that reads from a single DATA_DIR variable (default /kaggle/input/shelfwatch-data) and writes to /kaggle/working, with no local-only paths. Test it locally by setting DATA_DIR to data/processed.
+```
+
+## Task M14 (stretch): Pretrained time-series model and other extras
+Only after M12 is delivered and the team is on schedule.
+```
+In a Kaggle notebook (GPU optional), evaluate a pretrained time-series model on our 100 weekly series as one extra candidate: zero-shot first, then fine-tuned if time allows. Use the same chronological split and the same metrics. Also try a Tweedie or Poisson LightGBM objective. Report measured results only, including if it does not beat the moving average. Do not change the saved artifacts or contracts. Write results to reports/stretch.md.
+```
 
 ---
 
-## Task M3: Feature quality review and row counts
-
+## Task M15: Tuning trials, feature importance and explain helper (added in version 3.2)
+**SRS:** FR-M-11, FR-M-17
 ```
-Run /leakage-review on src/features.py and show the table. Then print: number of training rows (target weeks before 2011-10-10), number of test rows (8 weeks), rows dropped for missing history, share of NaN per feature in train and test, and the number of rows whose rolling window skipped the closed week. Compare with expectations (training roughly 3,000 to 3,500 rows, test 800 rows) and explain any difference. Do not change code unless you find a real leakage or counting bug; if so, fix it with a test.
-```
-**Done when:** the review reports no HIGH-severity findings. Commit: `feat(features): leakage-safe feature pipeline`.
-
----
-
-## Task M4: Split, baselines and metrics
-
-**SRS:** FR-M-1, FR-M-5, FR-M-6 | **Output:** start of `src/train.py`
-
-```
-Read docs/SRS.md section 5.2. Create src/train.py with:
-- split_chronological(df, test_start="2011-10-10") -> (train, test): train = target weeks before test_start, test = on or after; assert max(train week) < min(test week) and the test has exactly 8 distinct weeks.
-- evaluate(y_true, y_pred) -> dict with MAE, RMSE, WAPE (= sum(|error|) / sum(actual)) and bias (mean of predicted minus actual). No MAPE anywhere.
-- Baseline predictors that need no fitting: naive (last non-missing week = lag_1, but if lag_1 is NaN use the next available earlier week) and moving_avg_4 (= roll_mean_4). Clip predictions at 0.
-
-Tests (tests/test_models.py): the split is strictly chronological; evaluate matches hand-computed values on a 4-row example (state the numbers in the test); WAPE handles an all-zero actual by returning NaN, not an error; predictions are clipped at 0.
-
-Print baseline metrics on the test set as a table.
-```
-**Done when:** baseline test metrics print and the tests pass.
-
----
-
-## Task M5: Model pipelines (Ridge, Random Forest, LightGBM)
-
-**SRS:** FR-M-2
-
-```
-In src/train.py add a function make_model(name, params=None) returning an sklearn-compatible estimator for name in {"ridge", "random_forest", "lightgbm"}, each with seed 42:
-- ridge: sklearn Pipeline(SimpleImputer(strategy="median"), StandardScaler(), Ridge); imputation and scaling are inside the pipeline so they are fitted on training data only
-- random_forest: Pipeline(SimpleImputer(strategy="median"), RandomForestRegressor)
-- lightgbm: LGBMRegressor with native NaN handling, verbosity -1, deterministic settings
-
-Add fit_predict(name, params, train, test, features) -> predictions clipped at 0. Train on FEATURE_COLUMNS by default. Report test metrics for all three with default hyperparameters next to the baselines in one table. Do not tune yet. Add tests: each model fits on a tiny frame and predicts finite values; the Ridge pipeline's imputer statistics come from train only (assert that fitting on train then predicting a test row with NaN uses the train median).
-```
-**Done when:** the comparison table prints and the tests pass.
-
----
-
-## Task M6: Time-series tuning and out-of-fold validation predictions
-
-**SRS:** FR-M-4, FR-M-10 | **Strongest model**
-
-```
-Implement tuning in src/train.py.
-
-1. A week-based splitter: expanding-window TimeSeriesSplit over the UNIQUE target weeks of the training period (n_splits=5), so all rows of one week fall in the same fold and no week is split across train and validation. Write a test proving train weeks precede validation weeks in every fold and no week appears on both sides.
-2. tune(name, train, features, n_trials=30, seed=42): random search with the splitter, scored by WAPE on the validation folds. Search spaces: ridge alpha (log 1e-3 to 1e3); random_forest n_estimators 100 to 500, max_depth 3 to 20 or None, min_samples_leaf 1 to 20; lightgbm num_leaves 8 to 64, learning_rate (log 0.01 to 0.2), n_estimators 100 to 600, min_child_samples 5 to 50, subsample 0.6 to 1.0. Return best params, mean CV WAPE and the per-trial table.
-3. oof_predictions(name, params, train, features) -> DataFrame with product_id, week_start, actual, predicted from the validation folds. These are the 'val' predictions.
-
-Never touch the test set in any of this. Print the best params and CV WAPE for each model and the time taken.
-```
-**Done when:** the splitter test passes and tuned params are printed (save them to `models/tuned_params.json`).
-
----
-
-## Task M7: Ablation of calendar features
-
-**SRS:** FR-F-3, section 6.4
-
-```
-Using the tuned LightGBM and Ridge from M6, run an ablation on validation WAPE (out-of-fold, never the test set) for these feature sets: (a) base FEATURE_COLUMNS, (b) base minus week_of_year and month, (c) base plus weeks_to_christmas, (d) lags only. Print a table with validation WAPE and bias for each model and set. Decide which feature set to use and justify it in two sentences. Warn explicitly if (c) improves validation but could simply be acting as a time index. Save the chosen list in models/chosen_features.json.
-```
-**Done when:** the table and decision are printed and `chosen_features.json` exists.
-
----
-
-## Task M8: Level-shift diagnostic
-
-**SRS:** section 5.2 (known modelling risk)
-
-```
-The October and November test weeks sit at a higher demand level than most training weeks, and tree models cannot predict above the range seen in training. Diagnose this:
-1. For each model (baselines, ridge, random forest, lightgbm) compute bias and WAPE per test week and print a table of 8 weeks x models.
-2. Compute the share of test rows where the actual exceeds the maximum value of that product's training target, and the share of those rows that each model under-predicts.
-3. State in plain words whether tree models under-forecast on the test period.
-4. If they do, implement a ratio-target variant: train on target / roll_mean_4 (guard zeros and NaN) and multiply back at prediction time; add it as candidate "lightgbm_ratio", tune it with the M6 procedure, and add it to the comparison.
-
-Report all of it honestly, including if nothing beats the baselines.
-```
-**Done when:** the per-week table and a clear written conclusion exist.
-
----
-
-## Task M9: Model selection and saved artifacts (contract C5)
-
-**SRS:** FR-M-7 to FR-M-9
-
-```
-Select the best model by VALIDATION WAPE, ties broken by validation bias (not by test results). Refit it on the full training period with the chosen features, and save:
-- models/best_model.joblib (the full sklearn Pipeline if one is used)
-- models/feature_list.json (ordered feature names)
-- models/config.json: {"model_name", "horizon_weeks": 1, "train_end": "2011-10-03", "test_start": "2011-10-10", "seed": 42, "features_path", "library_versions": {python, pandas, numpy, scikit-learn, lightgbm}}
-
-Tests: the saved model reloads in a fresh process and reproduces the stored test predictions exactly; feature_list.json order equals the column order used in training.
-```
-**Done when:** the reload test passes.
-
----
-
-## Task M10: Export result files (contracts C2, C3, C4)
-
-**SRS:** FR-M-5, FR-M-10 | **Output:** the files the team consumes
-
-```
-Read CONTRACTS.md C2, C3, C4. Write:
-
-1. data/processed/predictions.csv: columns product_id, week_start, actual, predicted, model_name, split. Rows for EVERY model (naive, moving_avg_4, ridge, random_forest, lightgbm and any variant), split "test" (models refit on the training period) and split "val" (out-of-fold).
-2. data/processed/metrics.csv: columns model_name, split, MAE, RMSE, WAPE, bias for every model and both splits.
-3. data/processed/next_week_forecast.csv: columns product_id, week_start (2011-12-05), forecast_weekly (best model, built with build_future_features, clipped at 0), sigma_error, avg_weekly_units_train. sigma_error = per-product standard deviation of the best model's OUT-OF-FOLD validation errors (predicted minus actual); if a product has fewer than 6 validation observations use the pooled standard deviation of its volume segment from data/processed/product_segments.csv. avg_weekly_units_train = mean weekly units in the training period excluding the closed week.
-
-Tests: schema checks for C2 to C4 (tests/test_contracts.py must pass on real files); exactly 100 products in C4; no negative or NaN forecasts; sigma_error >= 0; test split has 800 rows per model.
-```
-**Done when:** `pytest tests/test_contracts.py -q` passes on the real files. Tell Members 1 and 3. Commit: `feat(model): artifacts and result files`.
-
----
-
-## Task M11: Modeling notebook and model card
-
-```
-Create notebooks/02_modeling.py (cell format) that reproduces the whole flow from weekly_demand.parquet to the saved artifacts, with a final metrics table and charts (WAPE by model for validation and test; predicted vs actual for the best model on 6 sample products). Then write docs/MODEL_CARD.md: purpose and horizon; data and split dates; features and why each exists; models compared and tuning budget; final metrics table (real numbers only); the chosen model and why (validation-based); the level-shift finding; limitations (one year of data, intermittent demand, bulk orders, closure week); how sigma_error is derived; how to reload and use the model. Mark any number you cannot find as TODO.
-```
-**Done when:** the notebook runs top to bottom and the model card has no invented numbers.
-
----
-
-## Task M12 (stretch): Poisson regression and a 4-week horizon
-
-Only after M10 is delivered and the team is on schedule.
-
-```
-Add a PoissonRegressor pipeline (imputer, scaler) as candidate "poisson", tuned like the others, and add it to the comparison. Then build a direct 4-week-ahead variant for the best model family (target = units at t+3 using features available at t) and report test metrics for horizon 4. Do not change the saved horizon-1 artifacts or contracts; write results to reports/horizon4.md and tell me whether it is worth adding to the SRS.
+1. Make tune() in M7 also return every trial as a row and save data/processed/tuning_trials.csv: candidate, trial_no, params (JSON string), mean_val_wape, is_best.
+2. Save data/processed/feature_importance.csv for the final model: feature, group, gain_importance (LightGBM) or abs_coef (Ridge), mean_abs_contribution on the test rows.
+3. Create src/explain.py: explain_row(model, feature_row) returning feature values, per-feature contributions and base_value (LightGBM pred_contrib; for Ridge coefficient x scaled value) such that base_value + sum(contributions) equals the model output within 1e-6; for scale-aware targets, return contributions in the scaled space and state the scaling factor. Tests for the sum identity on 20 random rows.
+4. Document both new files as contracts in CONTRACTS_ADDENDUM.md (tuning_trials, feature_importance) and make sure scripts/load_mysql.py (B6b) loads them.
+Print numbers from the files, not from memory.
 ```

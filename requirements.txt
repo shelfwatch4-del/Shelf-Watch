@@ -12,4 +12,11 @@ uvicorn==0.34.0
 matplotlib==3.10.1
 pytest==8.3.5
 httpx==0.28.1
+holidays==0.109
+sqlalchemy==2.0.38
+pymysql==1.1.1
+cryptography==44.0.1
+python-dotenv==1.0.1
+shap==0.51.0
+
 

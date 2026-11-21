@@ -1,0 +1,152 @@
+{
+  "best_candidate": "ensemble",
+  "moving_avg_4_baseline": {
+    "mean_val_wape": 0.5466382805992523,
+    "pooled_val_wape": 0.5446,
+    "val_bias": -4.6566
+  },
+  "naive_baseline": {
+    "mean_val_wape": 0.6522984334385229,
+    "pooled_val_wape": 0.6504,
+    "val_bias": -2.788
+  },
+  "candidates": {
+    "ridge_raw": {
+      "model_name": "ridge",
+      "target_mode": "raw",
+      "scale_col": null,
+      "params": {
+        "alpha": 157.4189004745664
+      },
+      "fold_scores": [
+        0.5668687298274773,
+        0.529170257045489,
+        0.5275228364429094,
+        0.5420109419444806,
+        0.4699812356358709
+      ],
+      "mean_val_wape": 0.5271108001792455,
+      "val_bias": 3.6943861941028446,
+      "time_taken_s": 0.57
+    },
+    "ridge_scale_aware": {
+      "model_name": "ridge",
+      "target_mode": "scale_aware",
+      "scale_col": "roll_mean_8",
+      "params": {
+        "alpha": 449.9979487472005
+      },
+      "fold_scores": [
+        0.6159179319366388,
+        0.7370059402734185,
+        0.9491651411276534,
+        0.8888387741914227,
+        0.7301276059794467
+      ],
+      "mean_val_wape": 0.784211078701716,
+      "val_bias": 33.45498693864986,
+      "time_taken_s": 0.6
+    },
+    "random_forest_raw": {
+      "model_name": "random_forest",
+      "target_mode": "raw",
+      "scale_col": null,
+      "params": {
+        "n_estimators": 314,
+        "max_depth": 10,
+        "min_samples_leaf": 16
+      },
+      "fold_scores": [
+        0.5723486969363679,
+        0.5242359889586468,
+        0.5287128485584489,
+        0.5402036878883183,
+        0.4707607608111489
+      ],
+      "mean_val_wape": 0.5272523966305862,
+      "val_bias": 3.4597288459520685,
+      "time_taken_s": 46.11
+    },
+    "random_forest_scale_aware": {
+      "model_name": "random_forest",
+      "target_mode": "scale_aware",
+      "scale_col": "roll_mean_4",
+      "params": {
+        "n_estimators": 256,
+        "max_depth": 17,
+        "min_samples_leaf": 13
+      },
+      "fold_scores": [
+        0.550494965998593,
+        0.5496970165827584,
+        0.5396518186749222,
+        0.5526567752426651,
+        0.47136864165595593
+      ],
+      "mean_val_wape": 0.5327738436309789,
+      "val_bias": 6.194498658790244,
+      "time_taken_s": 55.94
+    },
+    "lightgbm_raw": {
+      "model_name": "lightgbm",
+      "target_mode": "raw",
+      "scale_col": null,
+      "params": {
+        "num_leaves": 9,
+        "learning_rate": 0.03573884768117847,
+        "n_estimators": 153,
+        "min_child_samples": 8,
+        "subsample": 0.6739417822102108,
+        "colsample_bytree": 0.9878338511058234,
+        "reg_lambda": 1.2604664585649452,
+        "subsample_freq": 1
+      },
+      "fold_scores": [
+        0.5723542587985972,
+        0.5202317309464076,
+        0.528516029050249,
+        0.5519571606316245,
+        0.477748048859963
+      ],
+      "mean_val_wape": 0.5301614456573682,
+      "val_bias": 3.906380723664134,
+      "time_taken_s": 21.79
+    },
+    "lightgbm_scale_aware": {
+      "model_name": "lightgbm",
+      "target_mode": "scale_aware",
+      "scale_col": "roll_mean_4",
+      "params": {
+        "num_leaves": 43,
+        "learning_rate": 0.010509480845860121,
+        "n_estimators": 550,
+        "min_child_samples": 23,
+        "subsample": 0.7394663949166917,
+        "colsample_bytree": 0.6384706204365683,
+        "reg_lambda": 5.782199315538685,
+        "subsample_freq": 1
+      },
+      "fold_scores": [
+        0.5648405218075835,
+        0.5529754318401219,
+        0.5625582715392015,
+        0.6071362946879921,
+        0.4933698101520512
+      ],
+      "mean_val_wape": 0.55617606600539,
+      "val_bias": 7.2061244186507665,
+      "time_taken_s": 22.34
+    },
+    "ensemble": {
+      "model_name": "ensemble",
+      "target_mode": "raw",
+      "components": {
+        "ridge_raw": 0.8,
+        "moving_avg_4": 0.2
+      },
+      "selection_basis": "validation WAPE (FR-M-7)",
+      "mean_val_wape": 0.5238,
+      "val_bias": 2.0242
+    }
+  }
+}

@@ -1,0 +1,16 @@
+model_name,feature,feature_group,group,gain_importance,mean_abs_contribution
+ensemble,roll_mean_4,base,base,0.2619,59.5545
+ensemble,month,base,base,0.1294,29.4258
+ensemble,roll_mean_8,base,base,0.1101,25.0376
+ensemble,week_of_year,base,base,0.105,23.8817
+ensemble,prod_past_mean,base,base,0.0904,20.5534
+ensemble,prev_customers,base,base,0.0662,15.06
+ensemble,prod_past_std,base,base,0.061,13.8624
+ensemble,prev_avg_price,base,base,0.046,10.4501
+ensemble,prev_orders,base,base,0.0459,10.4413
+ensemble,lag_2,base,base,0.0313,7.1074
+ensemble,lag_1,base,base,0.0239,5.4433
+ensemble,roll_std_8,base,base,0.0201,4.5706
+ensemble,lag_3,base,base,0.0047,1.0582
+ensemble,lag_4,base,base,0.0034,0.7762
+ensemble,roll_std_4,base,base,0.0007,0.1548
